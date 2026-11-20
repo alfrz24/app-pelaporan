@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Daftar Pegawai &bull; Sistem Pelaporan{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div>
+    <h1 class="page-title">Master Data Pegawai</h1>
+    <p class="page-subtitle">Kelola data seluruh pegawai, tenaga ahli, dan PHL untuk pelaporan bulanan.</p>
+  </div>
+  <div>
+    <a href="{% url 'pegawai_tambah' %}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+      <i class="bi bi-person-plus-fill"></i>
+      <span>Tambah Pegawai Baru</span>
+    </a>
+  </div>
+</div>
+
+<!-- Alert Notifikasi Django Messages -->
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+      <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- KARTU TABEL PEGAWAI -->
+<div class="card-custom">
+  <div class="card-header flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-people-fill text-primary fs-5"></i>
+      <h5 class="card-title">Daftar Pegawai Terdaftar</h5>
+      <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2">{{ total_pegawai }} Pegawai</span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 ms-auto">
+      <div class="input-group input-group-sm" style="max-width: 260px;">
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+        <input type="text" class="form-control border-start-0 ps-0" id="searchPegawai" placeholder="Cari nama, jabatan, NIP...">
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-custom table-hover align-middle mb-0" id="pegawaiTable">
+        <thead>
+          <tr>
+            <th style="width: 60px; min-width: 60px;" class="text-center">No</th>
+            <th style="min-width: 220px;">Nama &amp; ID</th>
+            <th style="min-width: 240px;">Jabatan</th>
+            <th style="min-width: 190px;">NIP / NPWP</th>
+            <th style="min-width: 170px;">Nomor Rekening</th>
+            <th style="min-width: 260px;">Alamat</th>
+            <th class="text-end" style="width: 120px; min-width: 120px;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if pegawai_list %}
+            {% for p in pegawai_list %}
+              <tr>
+                <td class="fw-bold text-muted text-center">{{ forloop.counter }}</td>
+                <td>
+                  <div class="fw-bold text-dark">{{ p.nama }}</div>
+                  <small class="text-muted"><i class="bi bi-person-badge me-1"></i>ID PHL: <span class="fw-semibold">{{ p.id_phl|default:"-" }}</span></small>
+                </td>
+                <td>
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-wrap text-start lh-base d-inline-block p-2" style="max-width: 280px;">
+                    {{ p.jabatan|default:"Tenaga Teknis" }}
+                  </span>
+                </td>
+                <td>
+                  <div class="small mb-1"><span class="text-muted fw-semibold">NIP:</span> {{ p.nip|default:"-" }}</div>
+                  <div class="small"><span class="text-muted fw-semibold">NPWP:</span> {{ p.npwp|default:"-" }}</div>
+                </td>
+                <td>
+                  <span class="font-monospace small px-2 py-1 bg-light rounded border d-inline-block fw-semibold text-secondary">
+                    {{ p.nomor_rekening|default:"-" }}
+                  </span>
+                </td>
+                <td>
+                  <small class="text-muted d-block" style="line-height: 1.45; max-width: 300px;">
+                    {{ p.alamat|default:"-" }}
+                  </small>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a href="{% url 'pegawai_edit' p.pk %}" class="btn btn-outline-primary" title="Edit Pegawai" data-bs-toggle="tooltip">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <a href="{% url 'pegawai_hapus' p.pk %}" class="btn btn-outline-danger" title="Hapus Pegawai" data-bs-toggle="tooltip">
+                      <i class="bi bi-trash"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-people display-4 text-secondary d-block mb-2"></i>
+                <p class="mb-2">Belum ada data pegawai.</p>
+                <a href="{% url 'pegawai_tambah' %}" class="btn btn-sm btn-primary">
+                  <i class="bi bi-person-plus-fill me-1"></i> Tambah Pegawai Pertama
+                </a>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-footer bg-transparent border-top p-3 d-flex align-items-center justify-content-between">
+    <small class="text-muted">Total: {{ total_pegawai }} pegawai terdaftar</small>
+    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i> Kembali ke Dashboard
+    </a>
+  </div>
+</div>
+
+<script>
+  // Filter pencarian pegawai di tabel
+  document.getElementById('searchPegawai')?.addEventListener('input', function(e) {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('#pegawaiTable tbody tr').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+</script>
+{% endblock %}

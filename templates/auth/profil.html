@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Profil Saya &bull; Sistem Pelaporan{% endblock %}
+{% block content %}
+<div class="page-header mb-4">
+  <h1 class="page-title">Profil & Keamanan Akun</h1>
+  <p class="page-subtitle">Kelola nama tampilan dan ganti password akun Anda.</p>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card-custom">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-person-circle text-primary me-2"></i>Data Akun</h5></div>
+      <div class="card-body p-4">
+        <form method="POST">
+          {% csrf_token %}
+          <input type="hidden" name="aksi" value="profil">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Username</label>
+            <input type="text" class="form-control" value="{{ request.user.username }}" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Nama Tampilan</label>
+            <input type="text" class="form-control" name="first_name" value="{{ request.user.first_name }}" placeholder="Contoh: Operator Kominfotik">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Email</label>
+            <input type="email" class="form-control" name="email" value="{{ request.user.email }}">
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Simpan Profil</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-6">
+    <div class="card-custom">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-shield-lock-fill text-primary me-2"></i>Ganti Password</h5></div>
+      <div class="card-body p-4">
+        {% if request.user.username == 'admin' %}
+          <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle-fill me-1"></i> Anda memakai akun bawaan <strong>admin</strong>. Segera ganti password default demi keamanan.</div>
+        {% endif %}
+        <form method="POST">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Password Lama</label>
+            <input type="password" class="form-control" name="old_password" required autocomplete="current-password">
+            {% for e in form.old_password.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Password Baru</label>
+            <input type="password" class="form-control" name="new_password1" required autocomplete="new-password">
+            {% for e in form.new_password1.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Ulangi Password Baru</label>
+            <input type="password" class="form-control" name="new_password2" required autocomplete="new-password">
+            {% for e in form.new_password2.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-key-fill me-1"></i> Ganti Password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {% if request.user.is_superuser %}
+  <div class="col-12">
+    <div class="card-custom">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-cloud-download-fill text-primary me-2"></i>Cadangan Data</h5></div>
+      <div class="card-body p-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="small text-muted">Unduh salinan seluruh data (laporan, pegawai, pembayaran, nomor surat) dalam format JSON. Simpan berkala sebagai arsip.</div>
+        <a href="{% url 'backup_data' %}" class="btn btn-outline-primary"><i class="bi bi-download me-1"></i> Unduh Cadangan (.json)</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

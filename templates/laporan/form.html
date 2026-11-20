@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Periode Laporan &bull; Sistem Pelaporan{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div>
+    <h1 class="page-title">Edit Periode Laporan</h1>
+    <p class="page-subtitle">Ubah informasi bulan, tahun, rentang tanggal pelaksanaan, dan status laporan.</p>
+  </div>
+  <div>
+    <a href="{% url 'laporan_detail' laporan.pk %}" class="btn btn-outline-custom d-inline-flex align-items-center gap-2">
+      <i class="bi bi-arrow-left"></i>
+      <span>Kembali ke Detail Laporan</span>
+    </a>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card-custom">
+      <div class="card-header">
+        <h5 class="card-title d-flex align-items-center gap-2">
+          <i class="bi bi-pencil-square text-primary"></i>
+          Periode: {{ bulan_nama }} {{ laporan.tahun }}
+        </h5>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="bulanSelect" class="form-label small fw-semibold">Bulan Pelaporan <span class="text-danger">*</span></label>
+              <select class="form-select" id="bulanSelect" name="bulan" required>
+                <option value="1" {% if laporan.bulan == 1 %}selected{% endif %}>Januari</option>
+                <option value="2" {% if laporan.bulan == 2 %}selected{% endif %}>Februari</option>
+                <option value="3" {% if laporan.bulan == 3 %}selected{% endif %}>Maret</option>
+                <option value="4" {% if laporan.bulan == 4 %}selected{% endif %}>April</option>
+                <option value="5" {% if laporan.bulan == 5 %}selected{% endif %}>Mei</option>
+                <option value="6" {% if laporan.bulan == 6 %}selected{% endif %}>Juni</option>
+                <option value="7" {% if laporan.bulan == 7 %}selected{% endif %}>Juli</option>
+                <option value="8" {% if laporan.bulan == 8 %}selected{% endif %}>Agustus</option>
+                <option value="9" {% if laporan.bulan == 9 %}selected{% endif %}>September</option>
+                <option value="10" {% if laporan.bulan == 10 %}selected{% endif %}>Oktober</option>
+                <option value="11" {% if laporan.bulan == 11 %}selected{% endif %}>November</option>
+                <option value="12" {% if laporan.bulan == 12 %}selected{% endif %}>Desember</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="tahunInput" class="form-label small fw-semibold">Tahun <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="tahunInput" name="tahun" value="{{ laporan.tahun }}" min="2020" max="2035" required>
+            </div>
+
+            <div class="col-md-6">
+              <label for="tanggalMulai" class="form-label small fw-semibold">Tanggal Mulai</label>
+              <input type="date" class="form-control" id="tanggalMulai" name="tanggal_mulai" value="{{ laporan.tanggal_mulai|date:'Y-m-d'|default:'' }}">
+            </div>
+
+            <div class="col-md-6">
+              <label for="tanggalSelesai" class="form-label small fw-semibold">Tanggal Selesai</label>
+              <input type="date" class="form-control" id="tanggalSelesai" name="tanggal_selesai" value="{{ laporan.tanggal_selesai|date:'Y-m-d'|default:'' }}">
+            </div>
+
+            <div class="col-12">
+              <label for="statusSelect" class="form-label small fw-semibold">Status Laporan</label>
+              <select class="form-select" id="statusSelect" name="status">
+                <option value="draft" {% if laporan.status == 'draft' %}selected{% endif %}>Draft (Draf - Masih Dapat Diedit)</option>
+                <option value="selesai" {% if laporan.status == 'selesai' %}selected{% endif %}>Selesai (Final - Siap Cetak)</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="d-flex align-items-center justify-content-end gap-2">
+            <a href="{% url 'laporan_detail' laporan.pk %}" class="btn btn-outline-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i> Simpan Perubahan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

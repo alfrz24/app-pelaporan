@@ -1,0 +1,1460 @@
+{% extends 'base.html' %}
+
+{% block title %}Laporan {{ bulan_nama }} {{ laporan.tahun }} &bull; Sistem Pelaporan{% endblock %}
+
+{% block content %}
+<!-- HEADER DETAIL LAPORAN -->
+<div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary p-1 px-2">
+        <i class="bi bi-arrow-left"></i> Dashboard
+      </a>
+      <span class="badge {% if laporan.status == 'selesai' %}bg-success{% else %}bg-warning text-dark{% endif %} text-uppercase">
+        {{ laporan.status }}
+      </span>
+      <span class="badge bg-primary text-uppercase">{{ doc_numbers.kode_seksi|default:'ASTIK' }}</span>
+      <small class="text-muted">ID: #LP-{{ laporan.id }}</small>
+    </div>
+    <h1 class="page-title">{% if doc_numbers.judul_laporan %}{{ doc_numbers.judul_laporan }}{% else %}Laporan Bulanan{% endif %}: {{ bulan_nama }} {{ laporan.tahun }}</h1>
+    <p class="page-subtitle mb-0">
+      <i class="bi bi-calendar3 me-1"></i>
+      Periode: <strong>{{ doc_numbers.tanggal_surat|default:"30 "|add:bulan_nama|add:" "|add:laporan.tahun|stringformat:"s" }}</strong> | 
+      Seksi: <strong>{{ doc_numbers.nama_seksi|default:"Seksi Aplikasi, Siber dan Statistik" }}</strong> | 
+      PPTK: <strong>{{ doc_numbers.pptk_nama|default:"Yuli Yanti" }}</strong>
+    </p>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <!-- TOMBOL GENERATE WORD UTAMA -->
+    <button type="button" class="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalGenerateWord">
+      <i class="bi bi-file-earmark-word-fill fs-5"></i>
+      <span class="fw-semibold">Buat Dokumen Word</span>
+    </button>
+
+    <!-- TOGGLE STATUS DRAFT / SELESAI -->
+    <form method="POST" action="{% url 'laporan_status' laporan.pk %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-custom" title="Ubah Status">
+        <i class="bi bi-arrow-repeat me-1"></i>
+        {% if laporan.status == 'draft' %}Tandai Selesai{% else %}Kembalikan ke Draft{% endif %}
+      </button>
+    </form>
+
+    <div class="dropdown">
+      <button class="btn btn-outline-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        <i class="bi bi-three-dots-vertical"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+        <li><a class="dropdown-item" href="{% url 'laporan_export_csv' laporan.pk %}"><i class="bi bi-file-earmark-spreadsheet me-2"></i> Ekspor Rekap (CSV/Excel)</a></li>
+        <li><a class="dropdown-item" href="{% url 'dashboard' %}?salin={{ laporan.pk }}"><i class="bi bi-copy me-2"></i> Buat Laporan Pegawai Lain (bulan sama)</a></li>
+        <li><a class="dropdown-item" href="{% url 'laporan_edit' laporan.pk %}"><i class="bi bi-pencil-square me-2"></i> Edit Periode</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="{% url 'laporan_hapus' laporan.pk %}"><i class="bi bi-trash me-2"></i> Hapus Laporan</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- BAR KETERANGAN FORMAT SEKSI AKTIF -->
+<div class="card mb-4 border-0 shadow-sm bg-white">
+  <div class="card-body p-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="bg-primary-subtle text-primary p-2 rounded-3">
+          <i class="bi bi-building-check fs-4"></i>
+        </div>
+        <div>
+          <div class="small text-muted fw-semibold text-uppercase">Template Dokumen Aktif</div>
+          <div class="fw-bold text-dark">{{ doc_numbers.nama_seksi|default:'Seksi Aplikasi, Siber dan Statistik' }}</div>
+          <div class="small text-muted">
+            PPTK: <strong class="text-dark">{{ doc_numbers.pptk_nama|default:'Yuli Yanti' }}</strong> &bull; 
+            SPK: <strong class="text-dark">{{ doc_numbers.nomor_spk|default:'01/PN.01.02' }}</strong><br>
+            Kode Rekening: <span class="font-monospace text-dark">{{ doc_numbers.kode_rekening|default:'5.1.02.02.001.00039 Belanja Jasa Tenaga Informasi dan Teknologi' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-file-earmark-text me-1"></i> Ganti Template Dokumen
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 320px;">
+            <li><h6 class="dropdown-header">Pilih template (mengisi nama seksi, pejabat, SPK, dan nomor surat)</h6></li>
+            <li>
+              <a class="dropdown-item d-flex align-items-start gap-2 text-wrap" href="{% url 'laporan_terapkan_preset' laporan.pk 'astik' %}">
+                <span class="badge bg-primary mt-1">ASTIK</span>
+                <span>Template Seksi Aplikasi, Siber dan Statistik<br><small class="text-muted">PPTK: Yuli Yanti</small></span>
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-start gap-2 text-wrap" href="{% url 'laporan_terapkan_preset' laporan.pk 'id' %}">
+                <span class="badge bg-info text-dark mt-1">ID</span>
+                <span>Template Seksi Infrastruktur Digital<br><small class="text-muted">PPTK: Yasri Rahman M.</small></span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERT MESSAGES -->
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- KELENGKAPAN BERKAS -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+      <div class="fw-bold text-dark"><i class="bi bi-clipboard2-check-fill text-primary me-2"></i>Kelengkapan Berkas</div>
+      <span class="badge {% if progress == 100 %}bg-success{% else %}bg-warning text-dark{% endif %}">
+        {% if progress == 100 %}Siap dicetak{% else %}{{ progress }}% lengkap{% endif %}
+      </span>
+    </div>
+    <div class="progress mb-3" style="height: 8px;">
+      <div class="progress-bar {% if progress == 100 %}bg-success{% endif %}" style="width: {{ progress }}%;"></div>
+    </div>
+    <div class="row g-2">
+      {% for c in checklist %}
+        <div class="col-12 col-md-6 col-xl-4">
+          <a href="#" class="d-flex align-items-center gap-2 text-decoration-none p-2 rounded border bg-light" onclick="bukaTab('{{ c.tab }}'); return false;">
+            {% if c.ok %}<i class="bi bi-check-circle-fill text-success fs-5"></i>
+            {% elif c.opsional %}<i class="bi bi-dash-circle text-secondary fs-5"></i>
+            {% else %}<i class="bi bi-exclamation-circle-fill text-warning fs-5"></i>{% endif %}
+            <div class="small lh-sm">
+              <div class="fw-semibold text-dark">{{ c.label }}</div>
+              <div class="text-muted">{{ c.info }}</div>
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- KARTU RINGKASAN METRIK -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-label">Jumlah Tenaga Kerja</div>
+      <h3 class="stat-value text-primary">{{ pembayaran_list|length }} <small class="fs-6 text-muted">Orang</small></h3>
+      <small class="text-muted"><i class="bi bi-people"></i> Terdaftar di pembayaran</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-label">Total Honor Bruto</div>
+      <h3 class="stat-value text-dark" style="font-size: 1.4rem;">Rp {{ total_honor|floatformat:2 }}</h3>
+      <small class="text-muted"><i class="bi bi-cash"></i> Sebelum potongan</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-label">Potongan & Pajak</div>
+      <h3 class="stat-value text-warning" style="font-size: 1.4rem;">Rp {{ total_potongan|add:total_bpjs1|add:total_pph21|floatformat:2 }}</h3>
+      <small class="text-muted"><i class="bi bi-dash-circle"></i> Absen, BPJS 1%, PPh 21</small>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-label">Total Diterima (Netto)</div>
+      <h3 class="stat-value text-success" style="font-size: 1.4rem;">Rp {{ total_diterima|floatformat:2 }}</h3>
+      <small class="text-success fw-medium"><i class="bi bi-check-circle"></i> Siap dibayarkan</small>
+    </div>
+  </div>
+</div>
+
+<!-- NAV TABS -->
+<ul class="nav nav-pills mb-3 gap-2" id="laporanTab" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active d-flex align-items-center gap-2" id="pembayaran-tab" data-bs-toggle="pill" data-bs-target="#pembayaran-pane" type="button" role="tab">
+      <i class="bi bi-wallet2"></i> Pembayaran Pegawai ({{ pembayaran_list|length }})
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link d-flex align-items-center gap-2" id="ttd-tab" data-bs-toggle="pill" data-bs-target="#ttd-pane" type="button" role="tab">
+      <i class="bi bi-pen-fill"></i> Tanda Tangan Digital
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link d-flex align-items-center gap-2" id="pekerjaan-tab" data-bs-toggle="pill" data-bs-target="#pekerjaan-pane" type="button" role="tab">
+      <i class="bi bi-briefcase-fill"></i> Klasifikasi Anggaran & SPK
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link d-flex align-items-center gap-2" id="dokumen-tab" data-bs-toggle="pill" data-bs-target="#dokumen-pane" type="button" role="tab">
+      <i class="bi bi-file-text-fill"></i> Nomor Surat & Dokumen
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link d-flex align-items-center gap-2" id="pejabat-tab" data-bs-toggle="pill" data-bs-target="#pejabat-pane" type="button" role="tab">
+      <i class="bi bi-building-fill"></i> Seksi & Pejabat Penandatangan
+    </button>
+  </li>
+</ul>
+
+<!-- TAB CONTENT -->
+<div class="tab-content" id="laporanTabContent">
+
+  <!-- ========================================== -->
+  <!-- TAB 1: PEMBAYARAN PEGAWAI                  -->
+  <!-- ========================================== -->
+  <div class="tab-pane fade show active" id="pembayaran-pane" role="tabpanel">
+    <div class="card-custom">
+      <div class="card-header flex-wrap gap-2">
+        <div>
+          <h5 class="card-title">Daftar Pembayaran & Honorarium Pegawai</h5>
+          <small class="text-muted">Perhitungan gaji/upah, potongan absensi, BPJS 1%, PPh 21, dan total diterima perorangan.</small>
+        </div>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <!-- Tombol Tambah Semua Pegawai Sekaligus -->
+          <form method="POST" action="{% url 'pembayaran_tambah_semua' laporan.pk %}" class="d-inline" onsubmit="return confirm('Masukkan seluruh pegawai dari master data ke daftar pembayaran bulan ini?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-primary" title="Tarik semua master pegawai ke laporan ini">
+              <i class="bi bi-person-plus-fill me-1"></i> Tarik Semua Master Pegawai
+            </button>
+          </form>
+
+          <!-- Tombol Tambah Manual -->
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahPembayaran">
+            <i class="bi bi-plus-lg me-1"></i> Tambah Pegawai
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-custom table-hover">
+            <thead>
+              <tr>
+                <th style="width: 40px;">No</th>
+                <th>Nama Pegawai & ID PHL</th>
+                <th>Jabatan / Posisi</th>
+                <th class="text-center" style="width: 110px;">TTD Digital</th>
+                <th class="text-end">Honorarium</th>
+                <th class="text-end">Pot. Absen</th>
+                <th class="text-end">BPJS 1%</th>
+                <th class="text-end">PPh 21</th>
+                <th class="text-end fw-bold">Total Diterima</th>
+                <th class="text-end" style="min-width: 210px;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if pembayaran_list %}
+                {% for pb in pembayaran_list %}
+                  <tr>
+                    <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                    <td>
+                      <div class="fw-semibold text-dark">{{ pb.pegawai.nama }}</div>
+                      <small class="text-muted font-monospace">ID: {{ pb.pegawai.id_phl|default:"-" }} | Rek: {{ pb.pegawai.nomor_rekening|default:"-" }}</small>
+                    </td>
+                    <td><small class="text-dark">{{ pb.pegawai.jabatan|default:doc_numbers.nama_pekerjaan|default:"Tenaga Teknis IT" }}</small></td>
+                    <td class="text-center">
+                      {% if pb.has_signature %}
+                        <span class="badge bg-success-subtle text-success border border-success d-inline-flex align-items-center gap-1" title="Tanda tangan digital tersimpan">
+                          <i class="bi bi-check-circle-fill"></i> Ada TTD
+                        </span>
+                      {% else %}
+                        <span class="badge bg-light text-muted border d-inline-flex align-items-center gap-1" title="Tanda tangan manual (basah) saat dicetak">
+                          <i class="bi bi-dash"></i> Manual
+                        </span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">Rp {{ pb.honorarium|floatformat:2 }}</td>
+                    <td class="text-end text-danger">Rp {{ pb.potongan_kehadiran|default:0|floatformat:2 }}</td>
+                    <td class="text-end text-muted">Rp {{ pb.bpjs|default:0|floatformat:2 }}</td>
+                    <td class="text-end text-muted">Rp {{ pb.pph21|default:0|floatformat:2 }}</td>
+                    <td class="text-end fw-bold text-success">Rp {{ pb.total_diterima|floatformat:2 }}</td>
+                    <td class="text-end">
+                      <div class="btn-group btn-group-sm">
+                        <a href="{% url 'generate_word' laporan.pk %}?pegawai_id={{ pb.pegawai.id }}" class="btn btn-outline-success" title="Unduh 12 Lembar Berkas Word Pegawai Ini" data-bs-toggle="tooltip">
+                          <i class="bi bi-file-earmark-word-fill"></i>
+                        </a>
+                        <button class="btn btn-outline-warning" title="Atur Tanda Tangan Digital (Gambar / Upload)"
+                          onclick="bukaModalTandaTangan('pegawai', '{{ pb.pegawai.id }}', '{{ pb.pegawai.nama|escapejs }}', '{% if pb.has_signature %}{{ pb.signature_filename }}{% endif %}')">
+                          <i class="bi bi-pen"></i>
+                        </button>
+                        <button class="btn btn-outline-info" title="Atur Nomor Surat Khusus Pegawai Ini"
+                          onclick="bukaModalSuratPegawai('{{ pb.pegawai.id }}', '{{ pb.pegawai.nama|escapejs }}')">
+                          <i class="bi bi-hash"></i>
+                        </button>
+                        <button class="btn btn-outline-primary" title="Edit Pembayaran"
+                          onclick="editPembayaranModal('{{ pb.id }}', '{{ pb.pegawai.id }}', '{{ pb.pegawai.nama|escapejs }}', '{{ pb.honorarium }}', '{{ pb.potongan_kehadiran|default:0 }}', '{{ pb.bpjs|default:0 }}', '{{ pb.pph21|default:0 }}', '{{ pb.bpjs_pemberi_kerja|default:0 }}', '{{ pb.bpjs_ketenagakerjaan|default:0 }}')">
+                          <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <form method="POST" action="{% url 'pembayaran_hapus' pb.id %}" class="d-inline" onsubmit="return confirm('Hapus data pembayaran pegawai ini?')">
+                          {% csrf_token %}
+                          <button type="submit" class="btn btn-outline-danger" title="Hapus"><i class="bi bi-trash"></i></button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                {% endfor %}
+                <!-- Baris Rekapitulasi Total -->
+                <tr class="table-light fw-bold">
+                  <td colspan="4" class="text-center">TOTAL REKAPITULASI ({{ pembayaran_list|length }} PEGAWAI)</td>
+                  <td class="text-end">Rp {{ total_honor|floatformat:2 }}</td>
+                  <td class="text-end text-danger">Rp {{ total_potongan|floatformat:2 }}</td>
+                  <td class="text-end">Rp {{ total_bpjs1|floatformat:2 }}</td>
+                  <td class="text-end">Rp {{ total_pph21|floatformat:2 }}</td>
+                  <td class="text-end text-success fs-6">Rp {{ total_diterima|floatformat:2 }}</td>
+                  <td></td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="10" class="text-center py-5 text-muted">
+                    <i class="bi bi-wallet2 display-5 text-secondary d-block mb-2"></i>
+                    Belum ada data pembayaran untuk bulan ini.<br>
+                    <button class="btn btn-sm btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#modalTambahPembayaran">
+                      <i class="bi bi-plus-lg me-1"></i> Tambah Pegawai Pertama
+                    </button>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer bg-light p-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-info-circle text-primary"></i>
+          <span class="small"><strong>Terbilang Total:</strong> <em>{{ terbilang_total }}</em></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 2: TANDA TANGAN DIGITAL                -->
+  <!-- ========================================== -->
+  <div class="tab-pane fade" id="ttd-pane" role="tabpanel">
+    <div class="row g-3">
+      <!-- INFO BANNER TTD -->
+      <div class="col-12">
+        <div class="alert alert-info d-flex align-items-start gap-3 shadow-sm border-info-subtle mb-0">
+          <i class="bi bi-info-circle-fill fs-4 text-info mt-1"></i>
+          <div>
+            <h6 class="fw-bold mb-1">Informasi Tanda Tangan Digital</h6>
+            <p class="small mb-1">
+              Anda dapat mengunggah berkas foto/scan tanda tangan atau <strong>langsung menggambar tanda tangan di layar</strong> (mouse / layar sentuh).
+            </p>
+            <p class="small text-muted mb-0">
+              <strong class="text-dark"><i class="bi bi-check2-circle text-success me-1"></i>Fleksibel:</strong> Dokumen Word (.docx) <strong>TETAP BISA DIUNDUH</strong> secara normal kapan saja walaupun tanda tangan belum diisi (akan menghasilkan ruang tanda tangan kosong untuk tanda tangan basah secara manual).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TTD PEGAWAI / TENAGA KERJA -->
+      <div class="col-12 col-lg-8">
+        <div class="card-custom">
+          <div class="card-header">
+            <div>
+              <h5 class="card-title">Tanda Tangan Tenaga Kerja ({{ pembayaran_list|length }} Orang)</h5>
+              <small class="text-muted">Tanda tangan pada BAST, BAPP, Kwitansi, dan Daftar Hadir.</small>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-custom table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;">No</th>
+                    <th>Nama Pegawai</th>
+                    <th class="text-center" style="width: 120px;">Status</th>
+                    <th class="text-center" style="width: 160px;">Pratinjau TTD</th>
+                    <th class="text-end" style="width: 140px;">Kelola</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if pembayaran_list %}
+                    {% for pb in pembayaran_list %}
+                      <tr>
+                        <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                        <td>
+                          <div class="fw-semibold text-dark">{{ pb.pegawai.nama }}</div>
+                          <small class="text-muted">ID: {{ pb.pegawai.id_phl|default:"-" }}</small>
+                        </td>
+                        <td class="text-center">
+                          {% if pb.has_signature %}
+                            <span class="badge bg-success-subtle text-success border border-success">
+                              <i class="bi bi-check-circle-fill me-1"></i> Siap
+                            </span>
+                          {% else %}
+                            <span class="badge bg-light text-muted border">
+                              <i class="bi bi-dash me-1"></i> Belum Ada
+                            </span>
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                          {% if pb.has_signature %}
+                            <div class="bg-light p-1 rounded border d-inline-block">
+                              <img src="/ttd/{{ pb.signature_filename }}" alt="TTD {{ pb.pegawai.nama }}" style="max-height: 40px; max-width: 120px; object-fit: contain;">
+                            </div>
+                          {% else %}
+                            <span class="text-muted small"><em>(Garis kosong)</em></span>
+                          {% endif %}
+                        </td>
+                        <td class="text-end">
+                          <button class="btn btn-sm btn-outline-primary"
+                            onclick="bukaModalTandaTangan('pegawai', '{{ pb.pegawai.id }}', '{{ pb.pegawai.nama|escapejs }}', '{% if pb.has_signature %}{{ pb.signature_filename }}{% endif %}')">
+                            <i class="bi bi-pen me-1"></i> {% if pb.has_signature %}Ubah{% else %}Gores / Upload{% endif %}
+                          </button>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr>
+                      <td colspan="5" class="text-center py-4 text-muted">
+                        Belum ada pegawai terdaftar pada laporan bulan ini.
+                      </td>
+                    </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TTD PEJABAT PENANDATANGAN -->
+      <div class="col-12 col-lg-4">
+        <div class="card-custom">
+          <div class="card-header">
+            <div>
+              <h5 class="card-title">Tanda Tangan Pejabat</h5>
+              <small class="text-muted">PPTK, PPK, dan Bendahara.</small>
+            </div>
+          </div>
+          <div class="card-body p-3">
+            <!-- 1. PPTK -->
+            <div class="border rounded p-3 mb-3 bg-light">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge bg-primary">Pejabat PPTK</span>
+                {% if has_sig_pptk %}
+                  <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle-fill"></i> Ada</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Manual</span>
+                {% endif %}
+              </div>
+              <div class="fw-bold text-dark">{{ doc_numbers.pptk_nama|default:'Yuli Yanti' }}</div>
+              <div class="small text-muted mb-2">NIP. {{ doc_numbers.pptk_nip|default:'-' }}</div>
+
+              {% if has_sig_pptk %}
+                <div class="bg-white p-2 rounded border text-center mb-2">
+                  <img src="/ttd/pejabat_pptk.png" alt="TTD PPTK" style="max-height: 45px; max-width: 100%; object-fit: contain;">
+                </div>
+              {% endif %}
+
+              <button class="btn btn-sm btn-outline-primary w-100"
+                onclick="bukaModalTandaTangan('pejabat', '', 'PPTK ({{ doc_numbers.pptk_nama|default:'Yuli Yanti'|escapejs }})', '{% if has_sig_pptk %}pejabat_pptk.png{% endif %}', 'pptk')">
+                <i class="bi bi-pen me-1"></i> {% if has_sig_pptk %}Ubah TTD PPTK{% else %}Gores / Upload TTD PPTK{% endif %}
+              </button>
+            </div>
+
+            <!-- 2. PPK -->
+            <div class="border rounded p-3 mb-3 bg-light">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge bg-secondary">Pejabat PPK</span>
+                {% if has_sig_ppk %}
+                  <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle-fill"></i> Ada</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Manual</span>
+                {% endif %}
+              </div>
+              <div class="fw-bold text-dark">{{ doc_numbers.ppk_nama|default:'Rachmat Setiawan' }}</div>
+              <div class="small text-muted mb-2">NIP. {{ doc_numbers.ppk_nip|default:'-' }}</div>
+
+              {% if has_sig_ppk %}
+                <div class="bg-white p-2 rounded border text-center mb-2">
+                  <img src="/ttd/pejabat_ppk.png" alt="TTD PPK" style="max-height: 45px; max-width: 100%; object-fit: contain;">
+                </div>
+              {% endif %}
+
+              <button class="btn btn-sm btn-outline-primary w-100"
+                onclick="bukaModalTandaTangan('pejabat', '', 'PPK ({{ doc_numbers.ppk_nama|default:'Rachmat Setiawan'|escapejs }})', '{% if has_sig_ppk %}pejabat_ppk.png{% endif %}', 'ppk')">
+                <i class="bi bi-pen me-1"></i> {% if has_sig_ppk %}Ubah TTD PPK{% else %}Gores / Upload TTD PPK{% endif %}
+              </button>
+            </div>
+
+            <!-- 3. BENDAHARA -->
+            <div class="border rounded p-3 bg-light">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge bg-info text-dark">Bendahara Pengeluaran</span>
+                {% if has_sig_bendahara %}
+                  <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle-fill"></i> Ada</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Manual</span>
+                {% endif %}
+              </div>
+              <div class="fw-bold text-dark">{{ doc_numbers.bendahara_nama|default:'Roslaini Harahap' }}</div>
+              <div class="small text-muted mb-2">NIP. {{ doc_numbers.bendahara_nip|default:'-' }}</div>
+
+              {% if has_sig_bendahara %}
+                <div class="bg-white p-2 rounded border text-center mb-2">
+                  <img src="/ttd/pejabat_bendahara.png" alt="TTD Bendahara" style="max-height: 45px; max-width: 100%; object-fit: contain;">
+                </div>
+              {% endif %}
+
+              <button class="btn btn-sm btn-outline-primary w-100"
+                onclick="bukaModalTandaTangan('pejabat', '', 'Bendahara ({{ doc_numbers.bendahara_nama|default:'Roslaini Harahap'|escapejs }})', '{% if has_sig_bendahara %}pejabat_bendahara.png{% endif %}', 'bendahara')">
+                <i class="bi bi-pen me-1"></i> {% if has_sig_bendahara %}Ubah TTD Bendahara{% else %}Gores / Upload TTD Bendahara{% endif %}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 3: KLASIFIKASI ANGGARAN & SPK          -->
+  <!-- ========================================== -->
+  <div class="tab-pane fade" id="pekerjaan-pane" role="tabpanel">
+    <div class="card-custom">
+      <div class="card-header">
+        <div>
+          <h5 class="card-title">Klasifikasi Anggaran & Surat Perintah Kerja (SPK)</h5>
+          <small class="text-muted">Bagian ini disesuaikan dengan teks berwarna biru pada draft laporan kedinasan.</small>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{% url 'laporan_pengaturan_simpan' laporan.pk %}">
+          {% csrf_token %}
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label small fw-semibold">1. Program</label>
+              <input type="text" class="form-control" name="program" value="{{ doc_numbers.program|default:'Program Penyelenggaraan Persandian Untuk Pengamanan Informasi' }}" required>
+              <div class="form-text">Contoh ASTIK: Program Penyelenggaraan Persandian Untuk Pengamanan Informasi | Contoh ID: Program Pengelolaan Aplikasi Informatika</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">2. Kegiatan</label>
+              <input type="text" class="form-control" name="kegiatan" value="{{ doc_numbers.kegiatan|default:'Penyelenggaraan Persandian untuk Pengamanan Informasi Pemerintah Daerah Provinsi' }}" required>
+              <div class="form-text">Contoh ASTIK: Penyelenggaraan Persandian untuk Pengamanan Informasi Pemerintah Daerah Provinsi | Contoh ID: Pengelolaan E-government di Lingkup Pemerintah Daerah Provinsi</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">3. Sub Kegiatan</label>
+              <input type="text" class="form-control" name="sub_kegiatan" value="{{ doc_numbers.sub_kegiatan|default:'Penyediaan Layanan Keamanan Informasi dan Persandian Pemerintah Daerah' }}" required>
+              <div class="form-text">Contoh ASTIK: Penyediaan Layanan Keamanan Informasi dan Persandian Pemerintah Daerah | Contoh ID: Penyelenggaraan Jaringan Intra Pemerintah Daerah Provinsi</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">4. Aktivitas Sub Kegiatan</label>
+              <input type="text" class="form-control" name="aktivitas" value="{{ doc_numbers.aktivitas|default:'PJLP Layanan Keamanan Informasi' }}" required>
+              <div class="form-text">Contoh ASTIK: PJLP Layanan Keamanan Informasi | Contoh ID: PJLP Jaringan Intra Pemerintah Daerah</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">5. Kode Rekening</label>
+              <input type="text" class="form-control" name="kode_rekening" value="{{ doc_numbers.kode_rekening|default:'5.1.02.02.001.00039 Belanja Jasa Tenaga Informasi dan Teknologi' }}" required>
+            </div>
+
+            <div class="col-12 border-top pt-3 mt-3">
+              <h6 class="fw-bold text-dark mb-3">Informasi Pekerjaan & Kontrak (SPK)</h6>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Nama Pekerjaan / Posisi</label>
+              <input type="text" class="form-control" name="nama_pekerjaan" value="{{ doc_numbers.nama_pekerjaan|default:'Petugas Informasi dan Teknologi-Aplication Support Kominfotik Technical Support' }}" required>
+              <div class="form-text">Contoh: Petugas Informasi dan Teknologi-Aplication Support Kominfotik Technical Support</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Volume Pekerjaan</label>
+              <input type="text" class="form-control" name="volume" value="{{ doc_numbers.volume|default:'1 BOK' }}">
+              <div class="form-text">Contoh: 1 BOK atau 1 Orang 1 Bulan</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Nomor SPK</label>
+              <input type="text" class="form-control" name="nomor_spk" value="{{ doc_numbers.nomor_spk|default:'01/PN.01.02' }}">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Tanggal SPK</label>
+              <input type="text" class="form-control" name="tanggal_spk" value="{{ doc_numbers.tanggal_spk|default:'2 Januari 2026' }}">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Tahun Anggaran</label>
+              <input type="text" class="form-control" name="tahun_anggaran" value="{{ doc_numbers.tahun_anggaran|default:laporan.tahun }}">
+            </div>
+          </div>
+
+          <div class="mt-4 text-end">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i> Simpan Klasifikasi & Pekerjaan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 4: NOMOR DOKUMEN & JADWAL              -->
+  <!-- ========================================== -->
+  <div class="tab-pane fade" id="dokumen-pane" role="tabpanel">
+    <div class="card-custom">
+      <div class="card-header">
+        <div>
+          <h5 class="card-title">Kelola Nomor Dokumen Kedinasan & Jadwal Administrasi</h5>
+          <small class="text-muted">Nomor surat, tanggal BAST, tanggal kwitansi, dan jadwal pemeriksaan (Teks Kuning & Merah pada Draft).</small>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{% url 'laporan_pengaturan_simpan' laporan.pk %}">
+          {% csrf_token %}
+
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Nomor Surat Kedinasan (Default Laporan)</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">1. Nomor Surat Permohonan Pemeriksaan Seksi (No. Seksi JKD)</label>
+              <input type="text" class="form-control" name="permintaan_pemeriksaan" value="{{ doc_numbers.permintaan_pemeriksaan }}">
+              <div class="form-text">Contoh ASTIK: 152/0006.0001/ASTIK/PJLP.KI/X/2026</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">2. Nomor Permohonan Pemeriksaan Teknis PPK (No. TU 1)</label>
+              <input type="text" class="form-control" name="permintaan_teknis" value="{{ doc_numbers.permintaan_teknis }}">
+              <div class="form-text">Contoh ASTIK: 1439/PN.01.02 | Contoh ID: 1433/PN.01.02</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">3. Nomor Undangan Pemeriksaan TPPBJ (No. BA Dukungan Teknis 1)</label>
+              <input type="text" class="form-control" name="undangan" value="{{ doc_numbers.undangan }}">
+              <div class="form-text">Contoh ASTIK: 19/TPPBJ/KMFJP/ASTIK/0006.0001/X/2026</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">4. Nomor Berita Acara Pemeriksaan Teknis (No. BA Dukungan Teknis 2)</label>
+              <input type="text" class="form-control" name="berita_acara_pemeriksaan" value="{{ doc_numbers.berita_acara_pemeriksaan }}">
+              <div class="form-text">Contoh ASTIK: 20/TPPBJ/KMFJP/ASTIK/PJLP.KI/X/2026</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">5. Nomor Berita Acara Serah Terima (No. TU 2 / BAST)</label>
+              <input type="text" class="form-control" name="bast" value="{{ doc_numbers.bast }}">
+              <div class="form-text">Contoh ASTIK: 1440/PN.01.02 | Contoh ID: 1434/PN.01.02</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">6. Nomor Berita Acara Penyelesaian Pekerjaan (No. TU 3 / BAPP)</label>
+              <input type="text" class="form-control" name="bapp" value="{{ doc_numbers.bapp }}">
+              <div class="form-text">Contoh ASTIK: 1441/PN.01.02 | Contoh ID: 1435/PN.01.02</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">7. Nomor Kwitansi Pembayaran</label>
+              <input type="text" class="form-control" name="kwitansi" value="{{ doc_numbers.kwitansi }}">
+              <div class="form-text">Contoh: 88/KWT/ID/0030.0002/XI/2026</div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Tanggal, Hari & Tempat Pelaksanaan</h6>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Tanggal Surat & BAST</label>
+              <input type="text" class="form-control" name="tanggal_surat" value="{{ doc_numbers.tanggal_surat }}">
+              <div class="form-text">Contoh: 30 Oktober 2026</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Hari Pembuatan BAST</label>
+              <input type="text" class="form-control" name="hari_pembuatan" value="{{ doc_numbers.hari_pembuatan|default:'Jumat' }}">
+              <div class="form-text">Contoh: Jumat</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Penyebutan Tanggal Terbilang</label>
+              <input type="text" class="form-control" name="penyebutan_tanggal" value="{{ doc_numbers.penyebutan_tanggal|default:'Tiga Puluh' }}">
+              <div class="form-text">Contoh: Tiga Puluh</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Tanggal Kwitansi Pembayaran</label>
+              <input type="text" class="form-control" name="tanggal_kwitansi" value="{{ doc_numbers.tanggal_kwitansi }}">
+              <div class="form-text">Contoh: 02 November 2026</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Waktu Pemeriksaan</label>
+              <input type="text" class="form-control" name="waktu_pemeriksaan" value="{{ doc_numbers.waktu_pemeriksaan|default:'16.30 s.d Selesai' }}">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Tempat Pemeriksaan</label>
+              <input type="text" class="form-control" name="tempat_pemeriksaan" value="{{ doc_numbers.tempat_pemeriksaan|default:'Sudin Kominfotik Kota Administrasi Jakarta Pusat' }}">
+            </div>
+          </div>
+
+          <div class="mt-4 text-end">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i> Simpan Nomor Dokumen & Jadwal
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 5: PENGATURAN SEKSI & PEJABAT          -->
+  <!-- ========================================== -->
+  <div class="tab-pane fade" id="pejabat-pane" role="tabpanel">
+    <div class="card-custom">
+      <div class="card-header">
+        <div>
+          <h5 class="card-title">Pengaturan Seksi & Pejabat Penandatangan</h5>
+          <small class="text-muted">Nama seksi, PPTK, PPK, Bendahara, dan susunan Panitia Pemeriksa Hasil Pekerjaan (TPPBJ).</small>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{% url 'laporan_pengaturan_simpan' laporan.pk %}">
+          {% csrf_token %}
+
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Data Seksi Pelaksana Kegiatan</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-8">
+              <label class="form-label small fw-semibold">Nama Seksi</label>
+              <input type="text" class="form-control" name="nama_seksi" value="{{ doc_numbers.nama_seksi|default:'Seksi Aplikasi, Siber dan Statistik' }}" required>
+              <div class="form-text">Contoh: Seksi Aplikasi, Siber dan Statistik ATAU Seksi Infrastruktur Digital</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Kode Singkatan Seksi</label>
+              <input type="text" class="form-control" name="kode_seksi" value="{{ doc_numbers.kode_seksi|default:'ASTIK' }}" required>
+              <div class="form-text">Contoh: ASTIK atau ID</div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Data Pejabat Pelaksana Teknis Kegiatan (PPTK)</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Nama PPTK</label>
+              <input type="text" class="form-control" name="pptk_nama" value="{{ doc_numbers.pptk_nama|default:'Yuli Yanti' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">NIP PPTK</label>
+              <input type="text" class="form-control" name="pptk_nip" value="{{ doc_numbers.pptk_nip|default:'197107251998032004' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Jabatan PPTK</label>
+              <input type="text" class="form-control" name="pptk_jabatan" value="{{ doc_numbers.pptk_jabatan|default:'Kepala Seksi Aplikasi, Siber dan Statistik Suku Dinas Komunikasi, Informatika, dan Statistik Kota Administrasi Jakarta Pusat' }}">
+            </div>
+          </div>
+
+          <div class="form-text mb-2">Jabatan di bawah tanda tangan: biarkan sama dengan bawaan jika tidak ingin mengubah teks di dokumen.</div>
+          <div class="row g-3 mb-4">
+            <div class="col-md-12">
+              <label class="form-label small fw-semibold">Jabatan PPTK (teks di bawah tanda tangan)</label>
+              <input type="text" class="form-control" name="pptk_jabatan_ttd" value="{{ doc_numbers.pptk_jabatan_ttd|default:'Pejabat Pelaksana Teknis Kegiatan' }}">
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Data PPK & Bendahara Pengeluaran</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Nama Kuasa Pengguna Anggaran / PPK</label>
+              <input type="text" class="form-control" name="ppk_nama" value="{{ doc_numbers.ppk_nama|default:'Rachmat Setiawan' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">NIP PPK</label>
+              <input type="text" class="form-control" name="ppk_nip" value="{{ doc_numbers.ppk_nip|default:'198102022006041009' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Jabatan PPK</label>
+              <input type="text" class="form-control" name="ppk_jabatan" value="{{ doc_numbers.ppk_jabatan|default:'Pejabat Pembuat Komitmen' }}">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Nama Bendahara Pengeluaran / Pembantu</label>
+              <input type="text" class="form-control" name="bendahara_nama" value="{{ doc_numbers.bendahara_nama|default:'Roslaini Harahap' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">NIP Bendahara</label>
+              <input type="text" class="form-control" name="bendahara_nip" value="{{ doc_numbers.bendahara_nip|default:'197203121993032007' }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Jabatan Bendahara</label>
+              <input type="text" class="form-control" name="bendahara_jabatan" value="{{ doc_numbers.bendahara_jabatan|default:'Bendahara Pengeluaran/Pengeluaran Pembantu' }}">
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Panitia Pendukung Pengadaan Barang/Jasa (TPPBJ)</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Ketua Tim TPPBJ</label>
+              <input type="text" class="form-control" name="tppbj_ketua" value="{{ doc_numbers.tppbj_ketua|default:'Eka Novia Gunawan' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">NIP Ketua Tim TPPBJ</label>
+              <input type="text" class="form-control" name="tppbj_ketua_nip" value="{{ doc_numbers.tppbj_ketua_nip|default:'198011082011011007' }}">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Sekretaris Tim TPPBJ</label>
+              <input type="text" class="form-control" name="tppbj_sekretaris" value="{{ doc_numbers.tppbj_sekretaris|default:'Reza Ayatuna Lazuardy' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Anggota Tim TPPBJ</label>
+              <input type="text" class="form-control" name="tppbj_anggota" value="{{ doc_numbers.tppbj_anggota|default:'Sulaeman' }}">
+            </div>
+
+            <div class="col-md-12">
+              <label class="form-label small fw-semibold">Nomor SK Tim TPPBJ</label>
+              <input type="text" class="form-control" name="sk_tppbj" value="{{ doc_numbers.sk_tppbj|default:'03 Tahun 2026' }}">
+            </div>
+          </div>
+
+          <div class="mt-4 text-end">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i> Simpan Seksi & Pejabat
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAL GENERATE WORD CEPAT (SAMA PERSIS DENGAN CONTOH)      -->
+<!-- ========================================================== -->
+<div class="modal fade" id="modalGenerateWord" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fs-6 fw-bold">
+          <i class="bi bi-file-earmark-word-fill me-2"></i> Buat & Unduh Dokumen Word (.docx) Resmi
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="alert alert-success d-flex align-items-center gap-2 small mb-3">
+          <i class="bi bi-patch-check-fill fs-5"></i>
+          <div>
+            <strong>Format Dokumen Resmi:</strong> Hasil dokumen Word yang diunduh dijamin <strong>100% SAMA PERSIS</strong> dengan contoh resmi (Logo Jaya Raya DKI, tabel, margin, penomoran surat, kop surat, dan posisi tanda tangan).
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <!-- Pilihan 1: Unduh Berkas Per Pegawai -->
+          <div class="col-12 col-md-7 border-end pe-md-4">
+            <h6 class="fw-bold text-dark mb-2">
+              <i class="bi bi-person-badge text-primary me-1"></i> 1. Unduh Berkas Per Pegawai (.docx)
+            </h6>
+            <p class="small text-muted mb-2">
+              Pilih pegawai untuk mengunduh 1 bundel lengkap (12 lembar berkas kedinasan perorangan):
+            </p>
+            <form method="GET" action="{% url 'generate_word' laporan.pk %}">
+              <div class="mb-3">
+                <select class="form-select form-select-sm" name="pegawai_id" required>
+                  {% if pembayaran_list %}
+                    {% for pb in pembayaran_list %}
+                      <option value="{{ pb.pegawai.id }}">{{ pb.pegawai.nama }} ({{ pb.pegawai.id_phl|default:'PHL' }}) - Rp {{ pb.honorarium|floatformat:0 }}</option>
+                    {% endfor %}
+                  {% else %}
+                    {% for p in all_pegawai %}
+                      <option value="{{ p.id }}">{{ p.nama }} ({{ p.id_phl|default:'PHL' }})</option>
+                    {% empty %}
+                      <option value="">(Belum ada pegawai di laporan ini)</option>
+                    {% endfor %}
+                  {% endif %}
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm w-100">
+                <i class="bi bi-download me-1"></i> Unduh Word Pegawai Terpilih (.docx)
+              </button>
+            </form>
+          </div>
+
+          <!-- Pilihan 2: Unduh Paket Semua Pegawai (ZIP) -->
+          <div class="col-12 col-md-5 ps-md-3 d-flex flex-column justify-content-between">
+            <div>
+              <h6 class="fw-bold text-dark mb-2">
+                <i class="bi bi-file-earmark-zip text-warning me-1"></i> 2. Paket Semua Pegawai (.zip)
+              </h6>
+              <p class="small text-muted mb-3">
+                Unduh seluruh berkas Word untuk <strong>{{ pembayaran_list|length }} pegawai</strong> sekaligus dalam 1 paket ZIP siap arsip.
+              </p>
+            </div>
+            <a href="{% url 'generate_word' laporan.pk %}?mode=zip" class="btn btn-outline-success btn-sm w-100 mb-2">
+              <i class="bi bi-file-zip-fill me-1"></i> Unduh Semua Pegawai (.zip)
+            </a>
+          </div>
+        </div>
+
+        <hr class="my-3">
+
+        <div class="small text-muted">
+          <strong>Susunan 12 Halaman Dokumen Word Kedinasan:</strong>
+          <div class="row row-cols-2 mt-1">
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 1. Surat Seksi JKD (PPTK ke PPK)</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 7. Berita Acara Serah Terima (BAST)</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 2. Surat TU 1 (PPK ke TPPBJ)</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 8. Lampiran I BAST (Volume & Harga)</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 3. Undangan Pemeriksaan TPPBJ</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 9. Berita Acara Penyelesaian (BAPP)</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 4. Berita Acara Pemeriksaan Teknis</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 10. Kwitansi Pembayaran Resmi</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 5. Lampiran I BAP-Teknis</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 11. Daftar Pembayaran Tenaga IT</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 6. Daftar Hadir Pemeriksaan Teknis</div>
+            <div class="col"><i class="bi bi-check2 text-success me-1"></i> 12. Rekapitulasi Upah & Pajak</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAL INPUT TANDA TANGAN DIGITAL (CANVAS & UPLOAD)         -->
+<!-- ========================================================== -->
+<div class="modal fade" id="modalTandaTangan" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fs-6 fw-bold">
+          <i class="bi bi-pen me-2 text-warning"></i> Kelola Tanda Tangan Digital: <span id="labelTargetTtd" class="text-warning"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <!-- Reassurance Banner -->
+        <div class="alert alert-light border small mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-shield-check text-success fs-5"></i>
+          <div>
+            <strong>Catatan:</strong> Tanda tangan digital bersifat opsional. Dokumen Word (.docx) tetap dapat diunduh kapan saja dengan normal meskipun tanda tangan digital belum diisi (akan menghasilkan ruang tanda tangan kosong untuk tanda tangan basah).
+          </div>
+        </div>
+
+        <!-- Preview TTD Lama jika Ada -->
+        <div id="wrapperPreviewExistingTtd" class="p-3 bg-light rounded border mb-4 text-center" style="display: none;">
+          <div class="small text-muted fw-semibold mb-2">Tanda Tangan Digital yang Tersimpan Saat Ini:</div>
+          <div class="bg-white p-2 rounded border d-inline-block shadow-sm mb-2">
+            <img id="imgPreviewExistingTtd" src="" alt="Pratinjau TTD" style="max-height: 80px; max-width: 250px; object-fit: contain;">
+          </div>
+          <div>
+            <form method="POST" action="{% url 'tanda_tangan_hapus' laporan.pk %}" id="formHapusTtd" class="d-inline" onsubmit="return confirm('Hapus tanda tangan digital ini? Dokumen akan kembali dicetak dengan garis kosong untuk tanda tangan basah.')">
+              {% csrf_token %}
+              <input type="hidden" name="target_type" id="hapusTtdTargetType" value="">
+              <input type="hidden" name="pegawai_id" id="hapusTtdPegawaiId" value="">
+              <input type="hidden" name="pejabat_role" id="hapusTtdPejabatRole" value="">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash me-1"></i> Hapus Tanda Tangan Ini
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Pilihan Metode Input: Canvas Gambar vs Upload File -->
+        <ul class="nav nav-tabs nav-fill mb-3" id="ttdInputMethodTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold" id="canvas-tab" data-bs-toggle="tab" data-bs-target="#canvas-pane" type="button" role="tab">
+              <i class="bi bi-pencil-fill me-1"></i> Metode 1: Gambar / Gores Langsung
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-pane" type="button" role="tab">
+              <i class="bi bi-cloud-upload-fill me-1"></i> Metode 2: Upload File Gambar
+            </button>
+          </li>
+        </ul>
+
+        <!-- Form Simpan TTD -->
+        <form method="POST" action="{% url 'tanda_tangan_simpan' laporan.pk %}" enctype="multipart/form-data" id="formSimpanTtd">
+          {% csrf_token %}
+          <input type="hidden" name="target_type" id="inputTtdTargetType" value="">
+          <input type="hidden" name="pegawai_id" id="inputTtdPegawaiId" value="">
+          <input type="hidden" name="pejabat_role" id="inputTtdPejabatRole" value="">
+          <input type="hidden" name="canvas_data" id="inputCanvasData" value="">
+
+          <div class="tab-content" id="ttdInputMethodTabContent">
+            <!-- TAB A: CANVAS GORES LANGSUNG -->
+            <div class="tab-pane fade show active" id="canvas-pane" role="tabpanel">
+              <div class="text-center p-3 border rounded bg-light">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="small text-muted"><i class="bi bi-hand-index-thumb me-1"></i> Goreskan tanda tangan di area kotak putih di bawah ini:</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-dark active" id="btnColorBlack" onclick="pilihWarnaTtd('#000000', this)">
+                      <i class="bi bi-circle-fill text-dark me-1"></i> Hitam
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnColorBlue" onclick="pilihWarnaTtd('#002b66', this)">
+                      <i class="bi bi-circle-fill text-primary me-1"></i> Biru Dokumen
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearCanvasTtd()">
+                      <i class="bi bi-eraser-fill me-1"></i> Bersihkan
+                    </button>
+                  </div>
+                </div>
+
+                <div class="d-inline-block bg-white shadow-sm p-1 rounded border">
+                  <canvas id="ttdCanvas" width="460" height="180" style="border: 2px dashed #0d6efd; border-radius: 6px; background: #ffffff; cursor: crosshair; touch-action: none; width: 100%; max-width: 460px; height: 180px;"></canvas>
+                </div>
+                <div class="small text-muted mt-2">Dukungan: Mouse, Stylus Pen, maupun Layar Sentuh Handphone/Tablet</div>
+              </div>
+            </div>
+
+            <!-- TAB B: UPLOAD FILE GAMBAR -->
+            <div class="tab-pane fade" id="upload-pane" role="tabpanel">
+              <div class="p-4 border rounded bg-light text-center">
+                <i class="bi bi-file-earmark-image display-4 text-primary d-block mb-2"></i>
+                <h6 class="fw-bold mb-1">Unggah Berkas Tanda Tangan</h6>
+                <p class="small text-muted mb-3">Pilih berkas gambar tanda tangan berformat PNG atau JPG (disarankan PNG transparan).</p>
+                
+                <div class="d-flex justify-content-center mb-3">
+                  <input type="file" class="form-control form-control-sm" name="signature_file" id="fileTtdInput" accept="image/png, image/jpeg" style="max-width: 360px;" onchange="previewUploadTtd(this)">
+                </div>
+
+                <div id="wrapperPreviewUpload" style="display: none;" class="mt-3">
+                  <div class="small text-muted mb-1">Pratinjau File:</div>
+                  <img id="imgPreviewUpload" src="" alt="Preview Upload" class="bg-white p-2 rounded border shadow-sm" style="max-height: 80px; max-width: 200px; object-fit: contain;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer bg-light mt-4 mb-0 pb-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-primary btn-sm px-4" onclick="submitTtdForm()">
+              <i class="bi bi-save me-1"></i> Simpan Tanda Tangan Digital
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAL TAMBAH / EDIT PEMBAYARAN                             -->
+<!-- ========================================================== -->
+<div class="modal fade" id="modalTambahPembayaran" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fs-6 fw-bold" id="modalPembayaranTitle">
+          <i class="bi bi-cash-stack me-2"></i> Tambah Pembayaran Pegawai
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" action="{% url 'pembayaran_simpan' laporan.pk %}" id="formPembayaran">
+        {% csrf_token %}
+        <input type="hidden" name="pembayaran_id" id="inputPembayaranId" value="">
+
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-12" id="groupPilihPegawai">
+              <label class="form-label small fw-semibold">Pilih Pegawai <span class="text-danger">*</span></label>
+              <select class="form-select" name="pegawai_id" id="selectPegawai">
+                <option value="">-- Pilih Pegawai dari Master Data --</option>
+                {% for p in all_pegawai %}
+                  <option value="{{ p.id }}">{{ p.nama }} ({{ p.jabatan|default:'Tenaga IT' }} - Rek: {{ p.nomor_rekening|default:'-' }})</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Honorarium / Gaji Bruto (Rp) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" name="honorarium" id="inputHonorarium" value="7700000" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Potongan Absensi (Rp)</label>
+              <input type="number" class="form-control" name="potongan_kehadiran" id="inputPotongan" value="0">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">BPJS 1% Karyawan (Rp)</label>
+              <input type="number" class="form-control" name="bpjs" id="inputBpjs1" value="77000">
+              <div class="form-text">Otomatis dihitung 1% dari honor</div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">PPh 21 (Rp)</label>
+              <input type="number" class="form-control" name="pph21" id="inputPph21" value="0">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">BPJS 4% Pemberi Kerja (Rp)</label>
+              <input type="number" class="form-control" name="bpjs_pemberi_kerja" id="inputBpjs4" value="308000">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">BPJS Ketenagakerjaan (Rp)</label>
+              <input type="number" class="form-control" name="bpjs_ketenagakerjaan" id="inputBpjsNaker" value="41580">
+            </div>
+
+            <div class="col-12">
+              <div class="p-3 bg-light rounded border text-end">
+                <div class="text-muted small">Estimasi Total Diterima (Netto):</div>
+                <div class="fs-4 fw-bold text-success" id="labelTotalDiterima">Rp 7.623.000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-save me-1"></i> Simpan Pembayaran
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAL OVERRIDE NOMOR DOKUMEN KHUSUS PEGAWAI                -->
+<!-- ========================================================== -->
+<div class="modal fade" id="modalSuratPegawai" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fs-6 fw-bold">
+          <i class="bi bi-hash me-2"></i> Nomor Surat Khusus Pegawai: <span id="labelPegawaiSurat"></span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" id="formSuratPegawai" action="">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="alert alert-light border small mb-3">
+            <i class="bi bi-info-circle me-1 text-primary"></i> Isi bagian ini jika nomor surat untuk pegawai ini berbeda secara spesifik (misalnya nomor urut: 185, 186, dst.). Jika dikosongkan, sistem akan otomatis menggunakan nomor surat default laporan.
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Surat Seksi JKD</label>
+              <input type="text" class="form-control form-control-sm" name="no_jkd" id="surat_no_jkd">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Surat TU 1 (Pemeriksaan Teknis)</label>
+              <input type="text" class="form-control form-control-sm" name="no_tu1" id="surat_no_tu1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Undangan TPPBJ</label>
+              <input type="text" class="form-control form-control-sm" name="no_tppbj1" id="surat_no_tppbj1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Berita Acara Pemeriksaan (BAP)</label>
+              <input type="text" class="form-control form-control-sm" name="no_tppbj2" id="surat_no_tppbj2">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Berita Acara Serah Terima (BAST)</label>
+              <input type="text" class="form-control form-control-sm" name="no_tu2" id="surat_no_tu2">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Berita Acara Penyelesaian (BAPP)</label>
+              <input type="text" class="form-control form-control-sm" name="no_tu3" id="surat_no_tu3">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor Kwitansi</label>
+              <input type="text" class="form-control form-control-sm" name="no_kwt" id="surat_no_kwt">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Nomor SPK Pegawai</label>
+              <input type="text" class="form-control form-control-sm" name="spk" id="surat_spk">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-info btn-sm text-white">
+            <i class="bi bi-save me-1"></i> Simpan Nomor Dokumen Pegawai
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function bukaTab(paneId) {
+    const btn = document.querySelector('[data-bs-target="#' + paneId + '"]');
+    if (btn) { bootstrap.Tab.getOrCreateInstance(btn).show(); btn.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+  }
+</script>
+
+<!-- JAVASCRIPT LOGIC -->
+<script>
+  /* ========================================================= */
+  /* 1. PERHITUNGAN OTOMATIS PEMBAYARAN                        */
+  /* ========================================================= */
+  function hitungPembayaran() {
+    const honor = parseFloat(document.getElementById('inputHonorarium').value) || 0;
+    const pot = parseFloat(document.getElementById('inputPotongan').value) || 0;
+    
+    // Auto hitung BPJS jika belum diedit manual
+    const bpjs1 = Math.round(honor * 0.01);
+    const bpjs4 = Math.round(honor * 0.04);
+    const pph = parseFloat(document.getElementById('inputPph21').value) || 0;
+
+    document.getElementById('inputBpjs1').value = bpjs1;
+    document.getElementById('inputBpjs4').value = bpjs4;
+
+    const setPot = honor - pot;
+    const netto = setPot - bpjs1 - pph;
+
+    const formatRp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(netto > 0 ? netto : 0);
+    document.getElementById('labelTotalDiterima').textContent = formatRp;
+  }
+
+  document.getElementById('inputHonorarium')?.addEventListener('input', hitungPembayaran);
+  document.getElementById('inputPotongan')?.addEventListener('input', hitungPembayaran);
+  document.getElementById('inputPph21')?.addEventListener('input', hitungPembayaran);
+
+  function editPembayaranModal(id, pegawaiId, pegawaiNama, honor, pot, bpjs1, pph, bpjs4, bpjsNaker) {
+    document.getElementById('modalPembayaranTitle').innerHTML = '<i class="bi bi-pencil-square me-2"></i> Edit Pembayaran: ' + pegawaiNama;
+    document.getElementById('inputPembayaranId').value = id;
+    
+    const groupPilih = document.getElementById('groupPilihPegawai');
+    if (groupPilih) groupPilih.style.display = 'none';
+
+    document.getElementById('inputHonorarium').value = Math.round(parseFloat(honor) || 0);
+    document.getElementById('inputPotongan').value = Math.round(parseFloat(pot) || 0);
+    document.getElementById('inputBpjs1').value = Math.round(parseFloat(bpjs1) || 0);
+    document.getElementById('inputPph21').value = Math.round(parseFloat(pph) || 0);
+    document.getElementById('inputBpjs4').value = Math.round(parseFloat(bpjs4) || 0);
+    if (document.getElementById('inputBpjsNaker')) {
+      document.getElementById('inputBpjsNaker').value = Math.round(parseFloat(bpjsNaker) || 0);
+    }
+
+    const netto = (parseFloat(honor) || 0) - (parseFloat(pot) || 0) - (parseFloat(bpjs1) || 0) - (parseFloat(pph) || 0);
+    document.getElementById('labelTotalDiterima').textContent = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(netto > 0 ? netto : 0);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalTambahPembayaran'));
+    modal.show();
+  }
+
+  const PEGAWAI_NOMOR = {{ pegawai_nomor_json|safe }};
+
+  function bukaModalSuratPegawai(pegawaiId, pegawaiNama) {
+    document.getElementById('labelPegawaiSurat').textContent = pegawaiNama;
+    document.getElementById('formSuratPegawai').action = "/laporan/{{ laporan.pk }}/pegawai/" + pegawaiId + "/nomor-dokumen/";
+    const data = PEGAWAI_NOMOR[String(pegawaiId)] || {};
+    ['no_jkd','no_tu1','no_tppbj1','no_tppbj2','no_tu2','no_tu3','no_kwt','spk'].forEach(function (k) {
+      const el = document.getElementById('surat_' + k);
+      if (el) el.value = data[k] || '';
+    });
+    const modal = new bootstrap.Modal(document.getElementById('modalSuratPegawai'));
+    modal.show();
+  }
+
+  /* Ingat tab terakhir yang dibuka (tetap di tab yang sama setelah menyimpan) */
+  (function () {
+    const key = 'lp_tab_{{ laporan.pk }}';
+    document.querySelectorAll('#laporanTab [data-bs-toggle="pill"]').forEach(function (btn) {
+      btn.addEventListener('shown.bs.tab', function () { sessionStorage.setItem(key, btn.getAttribute('data-bs-target')); });
+    });
+    window.addEventListener('load', function () {
+      const saved = sessionStorage.getItem(key);
+      const btn = saved ? document.querySelector('#laporanTab [data-bs-target="' + saved + '"]') : null;
+      if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+    });
+  })();
+
+  document.getElementById('modalTambahPembayaran')?.addEventListener('hidden.bs.modal', function () {
+    document.getElementById('formPembayaran').reset();
+    document.getElementById('inputPembayaranId').value = '';
+    const groupPilih = document.getElementById('groupPilihPegawai');
+    if (groupPilih) groupPilih.style.display = 'block';
+    document.getElementById('modalPembayaranTitle').innerHTML = '<i class="bi bi-cash-stack me-2"></i> Tambah Pembayaran Pegawai';
+    hitungPembayaran();
+  });
+
+
+  /* ========================================================= */
+  /* 2. TANDA TANGAN DIGITAL: CANVAS GORES & UPLOAD             */
+  /* ========================================================= */
+  let canvas = document.getElementById('ttdCanvas');
+  let ctx = canvas ? canvas.getContext('2d') : null;
+  let drawing = false;
+  let currentColor = '#000000';
+  let hasDrawn = false;
+
+  function initCanvas() {
+    if (!canvas || !ctx) return;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = currentColor;
+  }
+
+  function clearCanvasTtd() {
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasDrawn = false;
+  }
+
+  function pilihWarnaTtd(hexColor, btnElement) {
+    currentColor = hexColor;
+    if (ctx) ctx.strokeStyle = currentColor;
+    document.getElementById('btnColorBlack')?.classList.remove('active');
+    document.getElementById('btnColorBlue')?.classList.remove('active');
+    btnElement.classList.add('active');
+  }
+
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }
+
+  if (canvas) {
+    // Mouse events
+    canvas.addEventListener('mousedown', function (e) {
+      drawing = true;
+      hasDrawn = true;
+      const pos = getCanvasPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    });
+
+    canvas.addEventListener('mousemove', function (e) {
+      if (!drawing) return;
+      const pos = getCanvasPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    });
+
+    ['mouseup', 'mouseleave'].forEach(function (ev) {
+      canvas.addEventListener(ev, function () {
+        drawing = false;
+      });
+    });
+
+    // Touch events for mobile/tablet/stylus
+    canvas.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      drawing = true;
+      hasDrawn = true;
+      const pos = getCanvasPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+      if (!drawing) return;
+      const pos = getCanvasPos(e);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', function (e) {
+      e.preventDefault();
+      drawing = false;
+    }, { passive: false });
+  }
+
+  function bukaModalTandaTangan(targetType, pegawaiId, namaLabel, existingFilename, pejabatRole) {
+    document.getElementById('labelTargetTtd').textContent = namaLabel;
+    document.getElementById('inputTtdTargetType').value = targetType;
+    document.getElementById('inputTtdPegawaiId').value = pegawaiId || '';
+    document.getElementById('inputTtdPejabatRole').value = pejabatRole || '';
+
+    // Hidden inputs untuk hapus
+    document.getElementById('hapusTtdTargetType').value = targetType;
+    document.getElementById('hapusTtdPegawaiId').value = pegawaiId || '';
+    document.getElementById('hapusTtdPejabatRole').value = pejabatRole || '';
+
+    // Cek apakah ada file TTD lama
+    const wrapperExisting = document.getElementById('wrapperPreviewExistingTtd');
+    const imgExisting = document.getElementById('imgPreviewExistingTtd');
+    if (existingFilename && existingFilename.trim() !== '') {
+      imgExisting.src = '/ttd/' + existingFilename + '?t=' + new Date().getTime();
+      wrapperExisting.style.display = 'block';
+    } else {
+      wrapperExisting.style.display = 'none';
+      imgExisting.src = '';
+    }
+
+    // Reset Canvas & Upload Form
+    clearCanvasTtd();
+    initCanvas();
+    const fileInput = document.getElementById('fileTtdInput');
+    if (fileInput) fileInput.value = '';
+    const wrapperUpload = document.getElementById('wrapperPreviewUpload');
+    if (wrapperUpload) wrapperUpload.style.display = 'none';
+
+    // Buka Tab Canvas sebagai default
+    const canvasTab = document.getElementById('canvas-tab');
+    if (canvasTab) {
+      const tabTrigger = new bootstrap.Tab(canvasTab);
+      tabTrigger.show();
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modalTandaTangan'));
+    modal.show();
+  }
+
+  function previewUploadTtd(input) {
+    const wrapper = document.getElementById('wrapperPreviewUpload');
+    const img = document.getElementById('imgPreviewUpload');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        wrapper.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      wrapper.style.display = 'none';
+    }
+  }
+
+  function submitTtdForm() {
+    const activeTab = document.querySelector('#ttdInputMethodTab button.active');
+    const isCanvasTab = activeTab && activeTab.id === 'canvas-tab';
+
+    if (isCanvasTab) {
+      if (!hasDrawn) {
+        alert('Silakan goreskan tanda tangan terlebih dahulu pada canvas putih, atau gunakan tab "Upload File Gambar".');
+        return;
+      }
+      const dataUrl = canvas.toDataURL('image/png');
+      document.getElementById('inputCanvasData').value = dataUrl;
+    } else {
+      const fileInput = document.getElementById('fileTtdInput');
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert('Silakan pilih berkas file gambar tanda tangan (PNG / JPG) yang ingin diunggah.');
+        return;
+      }
+      document.getElementById('inputCanvasData').value = '';
+    }
+
+    document.getElementById('formSimpanTtd').submit();
+  }
+</script>
+{% endblock %}

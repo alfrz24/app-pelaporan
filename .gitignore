@@ -1,0 +1,38 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local Databases
+*.sqlite3
+db.sqlite3
+
+# Local media (signatures are stored in database now)
+media/signatures/
+media/uploads/
+
+# Scratch & temporary test scripts
+scratch/
+cek_model.py
+index.html
+
+# IDE & Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Operating System Files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,380 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard &bull; Sistem Pelaporan Bulanan{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<div class="hero">
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 position-relative" style="z-index: 1;">
+    <div>
+      <div class="hero-date" id="heroDate"></div>
+      <h1>Halo, {{ request.user.first_name|default:request.user.username|title }} 👋</h1>
+      <p>Kelola laporan bulanan dan buat dokumen Word kedinasan otomatis dalam beberapa klik.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'pegawai_list' %}" class="btn btn-ghost d-flex align-items-center gap-2">
+        <i class="bi bi-people-fill"></i><span>Master Pegawai</span>
+      </a>
+      <button class="btn btn-light d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalTambahLaporan">
+        <i class="bi bi-plus-circle-fill"></i><span>Buat Laporan Baru</span>
+      </button>
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById('heroDate').textContent =
+    new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+</script>
+
+<!-- ALERT MESSAGES -->
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<!-- KARTU STATISTIK METRIK -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">Total Laporan Bulanan</div>
+          <h3 class="stat-value text-primary">{{ total_laporan }}</h3>
+          <small class="text-success fw-medium"><i class="bi bi-check2-circle"></i> Terdata di database</small>
+        </div>
+        <div class="stat-icon primary">
+          <i class="bi bi-file-earmark-check-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">Total Master Pegawai</div>
+          <h3 class="stat-value text-success">{{ total_pegawai }}</h3>
+          <small class="text-muted"><i class="bi bi-person-badge"></i> PJLP & Tenaga Ahli</small>
+        </div>
+        <div class="stat-icon success">
+          <i class="bi bi-people-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">Akumulasi Honorarium</div>
+          <h3 class="stat-value text-dark" style="font-size: 1.35rem;">Rp {{ total_honor_all|floatformat:0 }}</h3>
+          <small class="text-primary"><i class="bi bi-cash-stack"></i> Nilai bruto tersimpan</small>
+        </div>
+        <div class="stat-icon warning">
+          <i class="bi bi-wallet2"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="stat-label">Status Penyimpanan</div>
+          <h3 class="stat-value text-info" style="font-size: 1.35rem;">Aktif</h3>
+          <small class="text-success"><i class="bi bi-database-check"></i> Database Terhubung</small>
+        </div>
+        <div class="stat-icon info">
+          <i class="bi bi-hdd-network-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GRAFIK RINGKASAN -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-8">
+    <div class="card-custom h-100">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Total Dibayarkan per Periode</h5></div>
+      <div class="card-body"><div style="height: 260px;"><canvas id="chartPeriode"></canvas></div></div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="card-custom h-100">
+      <div class="card-header"><h5 class="card-title mb-0"><i class="bi bi-pie-chart-fill text-primary me-2"></i>Status Laporan</h5></div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <div style="height: 200px; width: 200px;"><canvas id="chartStatus"></canvas></div>
+        <div class="small text-muted mt-2">{{ total_selesai }} selesai &bull; {{ total_draft }} draft</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABEL UTAMA: DAFTAR LAPORAN BULANAN -->
+<div class="card-custom mb-4" id="laporan-section">
+  <div class="card-header flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-journal-bookmark-fill text-primary fs-5"></i>
+      <h5 class="card-title mb-0">Daftar Berkas Pelaporan Bulanan</h5>
+    </div>
+    
+    <form method="GET" action="{% url 'dashboard' %}" class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+      <div class="input-group input-group-sm" style="width: 220px;">
+        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+        <input type="text" class="form-control" name="q" value="{{ filter_q }}" placeholder="Cari judul / pegawai / bulan">
+      </div>
+      <select class="form-select form-select-sm" name="tahun" style="width: 110px;" onchange="this.form.submit()">
+        <option value="">Semua Tahun</option>
+        {% for t in daftar_tahun %}<option value="{{ t }}" {% if filter_tahun == t|stringformat:"s" %}selected{% endif %}>{{ t }}</option>{% endfor %}
+      </select>
+      <select class="form-select form-select-sm" name="status" style="width: 140px;" onchange="this.form.submit()">
+        <option value="">Semua Status</option>
+        <option value="selesai" {% if filter_status == 'selesai' %}selected{% endif %}>Selesai</option>
+        <option value="draft" {% if filter_status == 'draft' %}selected{% endif %}>Draft</option>
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary">Cari</button>
+      {% if filter_q or filter_tahun or filter_status %}
+        <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary" title="Reset filter"><i class="bi bi-x-lg"></i></a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-custom table-hover" id="laporanTable">
+        <thead>
+          <tr>
+            <th style="width: 50px;">No</th>
+            <th>Periode Pelaporan</th>
+            <th>Masa Pelaksanaan</th>
+            <th>Status</th>
+            <th>Waktu Dibuat</th>
+            <th class="text-end" style="min-width: 200px;">Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if laporan_tampil %}
+            {% for item in laporan_tampil %}
+              <tr>
+                <td class="fw-bold text-muted">{{ forloop.counter }}</td>
+                <td>
+                  <a href="{% url 'laporan_detail' item.pk %}" class="fw-bold text-primary text-decoration-none">
+                    {% if item.judul %}{{ item.judul }}{% else %}Laporan Periode {{ item.bulan }}/{{ item.tahun }}{% endif %}
+                  </a>
+                  <small class="text-muted d-block">Periode {{ item.bulan }}/{{ item.tahun }} &bull; ID Arsip: #LP-{{ item.id }}</small>
+                  {% if item.pegawai_ringkas %}
+                    <small class="text-dark d-block"><i class="bi bi-person-fill text-secondary me-1"></i>{{ item.pegawai_ringkas }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  <small class="text-dark">
+                    <i class="bi bi-calendar-event me-1 text-secondary"></i>
+                    {{ item.tanggal_mulai|date:"d M Y"|default:"Awal Bulan" }} &mdash; {{ item.tanggal_selesai|date:"d M Y"|default:"Akhir Bulan" }}
+                  </small>
+                </td>
+                <td>
+                  {% if item.status == 'selesai' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2">
+                      <i class="bi bi-check-circle-fill me-1"></i> Selesai
+                    </span>
+                  {% else %}
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle py-1 px-2">
+                      <i class="bi bi-hourglass-split me-1"></i> Draft
+                    </span>
+                  {% endif %}
+                </td>
+                <td class="text-muted small">{{ item.created_at|date:"d M Y, H:i"|default:"-" }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a href="{% url 'laporan_detail' item.pk %}" class="btn btn-primary" title="Buka Detail & Cetak Word">
+                      <i class="bi bi-folder2-open me-1"></i> Buka
+                    </a>
+                    <button type="button" class="btn btn-outline-success" title="Buat laporan baru di bulan yang sama untuk pegawai lain" onclick="bukaModalLaporan({{ item.pk }}, {{ item.bulan }}, {{ item.tahun }})">
+                      <i class="bi bi-copy"></i>
+                    </button>
+                    <a href="{% url 'laporan_edit' item.pk %}" class="btn btn-outline-secondary" title="Edit Periode">
+                      <i class="bi bi-pencil-square"></i>
+                    </a>
+                    <a href="{% url 'laporan_hapus' item.pk %}" class="btn btn-outline-danger" title="Hapus Laporan">
+                      <i class="bi bi-trash"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-5 text-muted">
+                <i class="bi bi-folder-x display-4 text-secondary d-block mb-3"></i>
+                <div class="fs-6 fw-semibold text-dark">Belum ada berkas laporan bulanan di database</div>
+                <p class="small text-muted mb-3">Silakan klik tombol di bawah untuk membuat laporan periode pertama Anda.</p>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahLaporan">
+                  <i class="bi bi-plus-circle me-1"></i> Buat Laporan Baru Sekarang
+                </button>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FOOTER CARD STATUS SISTEM -->
+  <div class="card-footer bg-light p-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="small text-muted">
+      <i class="bi bi-shield-check text-success me-1"></i> Seluruh data pelaporan tersimpan aman dan terintegrasi di database sistem.
+    </div>
+    <div class="small text-muted">
+      <i class="bi bi-hdd-stack text-primary me-1"></i> Penyimpanan Berkas & Media: <strong>Aktif</strong>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAL BUAT LAPORAN BULANAN BARU                            -->
+<!-- ========================================================== -->
+<div class="modal fade" id="modalTambahLaporan" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fs-6 fw-bold">
+          <i class="bi bi-calendar-plus me-2"></i> Buat Laporan Bulanan Baru
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" action="{% url 'dashboard' %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Bulan <span class="text-danger">*</span></label>
+              <select class="form-select" name="bulan" required>
+                <option value="1">1 - Januari</option>
+                <option value="2">2 - Februari</option>
+                <option value="3">3 - Maret</option>
+                <option value="4">4 - April</option>
+                <option value="5">5 - Mei</option>
+                <option value="6">6 - Juni</option>
+                <option value="7">7 - Juli</option>
+                <option value="8">8 - Agustus</option>
+                <option value="9">9 - September</option>
+                <option value="10" selected>10 - Oktober</option>
+                <option value="11">11 - November</option>
+                <option value="12">12 - Desember</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Tahun <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" name="tahun" value="2026" min="2020" max="2035" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Tanggal Mulai</label>
+              <input type="date" class="form-control" name="tanggal_mulai">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Tanggal Selesai</label>
+              <input type="date" class="form-control" name="tanggal_selesai">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Pegawai</label>
+              <select class="form-select" name="pegawai_id" id="selPegawaiBaru">
+                <option value="">-- Tanpa pegawai (tambahkan nanti) --</option>
+                {% for p in all_pegawai %}
+                  <option value="{{ p.id }}">{{ p.nama }}{% if p.id_phl %} ({{ p.id_phl }}){% endif %}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Satu bulan boleh punya banyak laporan, misalnya satu laporan untuk tiap pegawai.</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Judul Laporan <span class="text-muted fw-normal">(opsional)</span></label>
+              <input type="text" class="form-control" name="judul_laporan" placeholder="Otomatis: Laporan + nama pegawai">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Salin Pengaturan Dari</label>
+              <select class="form-select" name="salin_dari" id="selSalinDari">
+                <option value="">-- Mulai dari pengaturan bawaan --</option>
+                {% for l in laporan_list %}
+                  <option value="{{ l.id }}">{% if l.judul %}{{ l.judul }}{% else %}Laporan {{ l.bulan }}/{{ l.tahun }}{% endif %} &mdash; {{ l.bulan }}/{{ l.tahun }} (#LP-{{ l.id }})</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Menyalin template seksi, pejabat, SPK, dan nomor surat. Hanya pegawainya yang berbeda.</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Status Awal</label>
+              <select class="form-select" name="status">
+                <option value="draft" selected>Draft (Dapat Diedit)</option>
+                <option value="selesai">Selesai (Final)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-save me-1"></i> Buat Laporan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  function bukaModalLaporan(salinId, bulan, tahun) {
+    const modalEl = document.getElementById('modalTambahLaporan');
+    if (salinId) {
+      document.getElementById('selSalinDari').value = String(salinId);
+      modalEl.querySelector('select[name="bulan"]').value = String(bulan);
+      modalEl.querySelector('input[name="tahun"]').value = String(tahun);
+    }
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+  window.addEventListener('load', function () {
+    const s = new URLSearchParams(location.search).get('salin');
+    if (s) {
+      const opt = document.querySelector('#selSalinDari option[value="' + s + '"]');
+      const m = opt ? opt.textContent.match(/(\d+)\/(\d+) \(#LP/) : null;
+      bukaModalLaporan(s, m ? m[1] : 10, m ? m[2] : 2026);
+    }
+  });
+</script>
+  <script id="chartData" type="application/json">{{ chart_json|safe }}</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+  window.addEventListener('load', function () {
+    if (typeof Chart === 'undefined') return;
+    const d = JSON.parse(document.getElementById('chartData').textContent);
+    const rp = v => 'Rp ' + new Intl.NumberFormat('id-ID').format(v);
+    const c1 = document.getElementById('chartPeriode');
+    if (c1) new Chart(c1, {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ label: 'Total diterima', data: d.values, backgroundColor: '#2563eb', borderRadius: 6 }] },
+      options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => rp(c.parsed.y) } } },
+                 scales: { y: { ticks: { callback: v => (v / 1e6) + ' jt' } } } }
+    });
+    const c2 = document.getElementById('chartStatus');
+    if (c2) new Chart(c2, {
+      type: 'doughnut',
+      data: { labels: ['Selesai', 'Draft'], datasets: [{ data: d.status, backgroundColor: ['#16a34a', '#f59e0b'] }] },
+      options: { maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+    });
+  });
+  </script>
+{% endblock %}

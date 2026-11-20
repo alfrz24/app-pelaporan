@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ judul }} &bull; Sistem Pelaporan{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div>
+    <h1 class="page-title">{{ judul }}</h1>
+    <p class="page-subtitle">Lengkapi identitas pegawai untuk keperluan pencetakan dokumen dan penggajian.</p>
+  </div>
+  <div>
+    <a href="{% url 'pegawai_list' %}" class="btn btn-outline-custom d-inline-flex align-items-center gap-2">
+      <i class="bi bi-arrow-left"></i>
+      <span>Kembali ke Daftar</span>
+    </a>
+  </div>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card-custom">
+      <div class="card-header bg-transparent border-bottom">
+        <h5 class="card-title d-flex align-items-center gap-2">
+          <i class="bi bi-person-lines-fill text-primary"></i>
+          Informasi Identitas Pegawai
+        </h5>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" novalidate class="needs-validation">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="id_phl" class="form-label small fw-semibold">ID Pegawai / PHL</label>
+              <input type="text" class="form-control" id="id_phl" name="id_phl" value="{{ pegawai.id_phl|default:'' }}" placeholder="Contoh: PHL-01 / IT-001">
+              <div class="form-text">Nomor identitas unik pegawai.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="nama" class="form-label small fw-semibold">Nama Lengkap <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="nama" name="nama" value="{{ pegawai.nama|default:'' }}" required placeholder="Contoh: Ahmad Fauzi, S.Kom">
+              <div class="invalid-feedback">Nama pegawai wajib diisi.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="jabatan" class="form-label small fw-semibold">Jabatan / Posisi</label>
+              <input type="text" class="form-control" id="jabatan" name="jabatan" value="{{ pegawai.jabatan|default:'Tenaga Teknis IT' }}" placeholder="Contoh: Tenaga Teknis IT / Programmer">
+            </div>
+
+            <div class="col-md-6">
+              <label for="nip" class="form-label small fw-semibold">NIP</label>
+              <input type="text" class="form-control" id="nip" name="nip" value="{{ pegawai.nip|default:'' }}" placeholder="Nomor Induk Pegawai jika ada (bisa kosong)">
+            </div>
+
+            <div class="col-md-6">
+              <label for="npwp" class="form-label small fw-semibold">NPWP</label>
+              <input type="text" class="form-control" id="npwp" name="npwp" value="{{ pegawai.npwp|default:'' }}" placeholder="Nomor Pokok Wajib Pajak">
+            </div>
+
+            <div class="col-md-6">
+              <label for="nomor_rekening" class="form-label small fw-semibold">Nomor Rekening Bank</label>
+              <input type="text" class="form-control" id="nomor_rekening" name="nomor_rekening" value="{{ pegawai.nomor_rekening|default:'' }}" placeholder="Contoh: Bank Jateng 3-021-XXXXX">
+            </div>
+
+            <div class="col-12">
+              <label for="alamat" class="form-label small fw-semibold">Alamat Lengkap</label>
+              <textarea class="form-control" id="alamat" name="alamat" rows="3" placeholder="Alamat domisili atau tempat tinggal">{{ pegawai.alamat|default:'' }}</textarea>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="d-flex align-items-center justify-content-end gap-2">
+            <a href="{% url 'pegawai_list' %}" class="btn btn-outline-secondary">Batal</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i> Simpan Data Pegawai
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

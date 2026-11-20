@@ -1,0 +1,344 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk &bull; Sistem Pelaporan Bulanan Sudin Kominfotik Jakarta Pusat</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5.3.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons 1.11.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      margin: 0;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Background glow decor */
+    body::before {
+      content: "";
+      position: absolute;
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(37,99,235,0.25) 0%, rgba(37,99,235,0) 70%);
+      top: -100px;
+      right: -100px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: "";
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(14,165,233,0.2) 0%, rgba(14,165,233,0) 70%);
+      bottom: -100px;
+      left: -100px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .login-card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border-radius: 1.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+    }
+
+    .login-header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      color: #ffffff;
+      padding: 2.25rem 2rem 2rem;
+      text-align: center;
+      position: relative;
+    }
+
+    .login-header-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .login-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+
+    .login-subtitle {
+      font-size: 0.825rem;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.4;
+    }
+
+    .login-body {
+      padding: 2.25rem 2rem 2rem;
+    }
+
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label {
+      color: var(--primary);
+    }
+
+    .form-control {
+      border-radius: 0.75rem;
+      border: 1.5px solid #e2e8f0;
+      padding: 0.75rem 1rem;
+      font-size: 0.925rem;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    }
+
+    .input-icon-group {
+      position: relative;
+    }
+
+    .input-icon-group .form-control {
+      padding-left: 2.75rem;
+    }
+
+    .input-icon-group .icon-addon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 1.15rem;
+      z-index: 5;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 1.15rem;
+      z-index: 5;
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .password-toggle:hover {
+      color: #475569;
+    }
+
+    .btn-login {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.85rem 1.5rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+      box-shadow: 0 8px 16px -4px rgba(37, 99, 235, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .btn-login:hover {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      box-shadow: 0 12px 20px -4px rgba(37, 99, 235, 0.5);
+      transform: translateY(-1px);
+      color: #ffffff;
+    }
+
+    .badge-gov {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(37, 99, 235, 0.1);
+      color: #1d4ed8;
+      padding: 0.35rem 0.75rem;
+      border-radius: 2rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+    }
+
+    .demo-credentials {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.775rem;
+      color: #475569;
+      margin-top: 1.25rem;
+    }
+
+    .login-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: #94a3b8;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-card">
+      
+      <!-- HEADER CARD -->
+      <div class="login-header">
+        <div class="login-header-icon">
+          <i class="bi bi-file-earmark-check-fill"></i>
+        </div>
+        <h1 class="login-title">SIM-PELAPORAN</h1>
+        <p class="login-subtitle">
+          Suku Dinas Komunikasi, Informatika, dan Statistik<br>
+          Kota Administrasi Jakarta Pusat
+        </p>
+      </div>
+
+      <!-- BODY CARD -->
+      <div class="login-body">
+        
+        <div class="text-center">
+          <div class="badge-gov">
+            <i class="bi bi-shield-check"></i> Sistem Otentikasi Terproteksi
+          </div>
+        </div>
+
+        <!-- ALERT NOTIFIKASI -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'danger' }} alert-dismissible fade show p-2 px-3 small rounded-3" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ message }}
+              <button type="button" class="btn-close p-2" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <form method="POST" action="{% url 'login' %}">
+          {% csrf_token %}
+
+          <!-- INPUT USERNAME -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-secondary mb-1">Nama Pengguna (Username)</label>
+            <div class="input-icon-group">
+              <i class="bi bi-person-fill icon-addon"></i>
+              <input type="text" class="form-control" name="username" placeholder="Masukkan username" value="admin" required autofocus>
+            </div>
+          </div>
+
+          <!-- INPUT PASSWORD -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label small fw-semibold text-secondary mb-0">Kata Sandi (Password)</label>
+            </div>
+            <div class="input-icon-group">
+              <i class="bi bi-key-fill icon-addon"></i>
+              <input type="password" class="form-control" name="password" id="inputPassword" placeholder="Masukkan password" value="admin" required>
+              <button type="button" class="password-toggle" id="btnTogglePassword" title="Lihat password">
+                <i class="bi bi-eye" id="toggleIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- INGAT SAYA -->
+          <div class="d-flex align-items-center justify-content-between mb-4">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="rememberMe" checked>
+              <label class="form-check-label small text-secondary" for="rememberMe">
+                Ingat sesi saya
+              </label>
+            </div>
+            <span class="small text-muted"><i class="bi bi-lock-fill text-success"></i> SSL Enkripsi</span>
+          </div>
+
+          <!-- TOMBOL MASUK -->
+          <button type="submit" class="btn btn-login w-100 d-flex align-items-center justify-content-center gap-2">
+            <span>Masuk ke Aplikasi</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+        </form>
+
+        <!-- KREDENSIAL BAWAAN -->
+        <div class="demo-credentials">
+          <div class="fw-semibold text-dark mb-1">
+            <i class="bi bi-info-circle-fill text-primary me-1"></i> Akun Bawaan Sistem:
+          </div>
+          <div class="d-flex justify-content-between">
+            <span>Username: <strong class="text-dark">admin</strong></span>
+            <span>Password: <strong class="text-dark">admin</strong></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FOOTER COPYRIGHT -->
+    <div class="login-footer">
+      <div>&copy; 2026 Suku Dinas Kominfotik Kota Administrasi Jakarta Pusat</div>
+      <div class="text-secondary small">Aplikasi Pelaporan & Pembuat Dokumen Resmi Otomatis</div>
+    </div>
+  </div>
+
+  <!-- SCRIPT TOGGLE SHOW/HIDE PASSWORD -->
+  <script>
+    const btnToggle = document.getElementById('btnTogglePassword');
+    const inputPass = document.getElementById('inputPassword');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    btnToggle?.addEventListener('click', function () {
+      if (inputPass.type === 'password') {
+        inputPass.type = 'text';
+        toggleIcon.classList.replace('bi-eye', 'bi-eye-slash');
+      } else {
+        inputPass.type = 'password';
+        toggleIcon.classList.replace('bi-eye-slash', 'bi-eye');
+      }
+    });
+  </script>
+</body>
+</html>
