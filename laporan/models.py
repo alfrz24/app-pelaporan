@@ -244,3 +244,40 @@ class TandaTangan(models.Model):
 
     def __str__(self):
         return self.nama_berkas
+
+
+class Pejabat(models.Model):
+    """
+    Data Master Pejabat Penandatangan Kedinasan.
+    Mendukung opsi pemilihan tanda tangan digital berurutan dari kiri ke kanan.
+    """
+    POSISI_PILIHAN = [
+        ('kiri', 'Kolom Kiri (Pihak Pertama / Pelaksana / PPTK)'),
+        ('tengah', 'Kolom Tengah (Mengetahui / PPK)'),
+        ('kanan', 'Kolom Kanan (Pihak Kedua / Bendahara / Kasudin)'),
+    ]
+
+    id = models.BigAutoField(primary_key=True)
+    nama = models.CharField(max_length=150)
+    nip = models.CharField(max_length=50, blank=True, null=True)
+    jabatan = models.CharField(max_length=200, blank=True, null=True)
+    peran = models.CharField(max_length=50, blank=True, null=True, help_text="Kode peran, cth: pptk, ppk, bendahara, kasudin")
+    urutan = models.PositiveSmallIntegerField(default=1, help_text="Urutan posisi tanda tangan: 1 (kiri), 2 (tengah), 3 (kanan), dst.")
+    posisi_kolom = models.CharField(max_length=20, default='kiri', choices=POSISI_PILIHAN)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'pejabat'
+        ordering = ['urutan', 'id']
+
+    def __str__(self):
+        return f"{self.nama} ({self.jabatan or self.peran or 'Pejabat'})"
+
+    @property
+    def file_ttd(self):
+        """Nama berkas tanda tangan pejabat untuk pencocokan di tabel TandaTangan."""
+        if self.peran:
+            return f"pejabat_{self.peran.lower().strip()}.png"
+        return f"pejabat_id_{self.id}.png"
+

@@ -77,37 +77,44 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # =====================================================================
 # Database
-#   1. DATABASE_URL (produksi / Vercel)  -> mis. PostgreSQL Neon / Supabase
-#   2. MariaDB lokal port 3307 (XAMPP)   -> bila aktif
-#   3. SQLite                            -> cadangan pengembangan
+#   1. MySQL lokal (XAMPP/MariaDB port 3306 / 3307) -> db_pelaporan_bulanan
+#   2. DATABASE_URL (produksi / Vercel)             -> mis. PostgreSQL Neon
+#   3. SQLite                                       -> cadangan pengembangan
 # =====================================================================
 IS_VERCEL = bool(os.environ.get('VERCEL'))
 DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
 
 
-def check_mysql_socket(host='127.0.0.1', port=3307, timeout=0.5):
-    try:
-        with socket.create_connection((host, int(port)), timeout=timeout):
-            return True
-    except Exception:
-        return False
+def detect_mysql_port(host='127.0.0.1', ports=(3306, 3307), timeout=0.5):
+    for p in ports:
+        try:
+            with socket.create_connection((host, int(p)), timeout=timeout):
+                return int(p)
+        except Exception:
+            continue
+    return None
 
 
-if DATABASE_URL:
-    import dj_database_url
-    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=60, ssl_require=not DEBUG)}
-elif not IS_VERCEL and check_mysql_socket(os.environ.get('MYSQL_HOST', '127.0.0.1'), os.environ.get('MYSQL_PORT', 3307)):
+_detected_mysql_port = detect_mysql_port(os.environ.get('MYSQL_HOST', '127.0.0.1')) if not IS_VERCEL else None
+
+if not IS_VERCEL and _detected_mysql_port:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
             'NAME': os.environ.get('MYSQL_DATABASE', 'db_pelaporan_bulanan'),
             'USER': os.environ.get('MYSQL_USER', 'root'),
-            'PASSWORD': os.environ.get('MYSQL_PASSWORD', '123456'),
+            'PASSWORD': os.environ.get('MYSQL_PASSWORD', ''),
             'HOST': os.environ.get('MYSQL_HOST', '127.0.0.1'),
-            'PORT': os.environ.get('MYSQL_PORT', '3307'),
-            'OPTIONS': {'charset': 'utf8mb4'},
+            'PORT': str(_detected_mysql_port),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
         }
     }
+elif DATABASE_URL:
+    import dj_database_url
+    DATABASES = {'default': dj_database_url.parse(DATABASE_URL, conn_max_age=60, ssl_require=not DEBUG)}
 else:
     # Di Vercel tanpa DATABASE_URL hanya /tmp yang bisa ditulis (data TIDAK permanen).
     DATABASES = {

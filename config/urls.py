@@ -33,6 +33,8 @@ urlpatterns = [
     path('ttd/<str:nama_berkas>', views.tanda_tangan_gambar, name='tanda_tangan_gambar'),
     path('laporan/<int:laporan_id>/tanda-tangan/simpan/', views.tanda_tangan_simpan, name='tanda_tangan_simpan'),
     path('laporan/<int:laporan_id>/tanda-tangan/hapus/', views.tanda_tangan_hapus, name='tanda_tangan_hapus'),
+    path('tanda-tangan/simpan/', views.tanda_tangan_simpan, {'laporan_id': 0}, name='tanda_tangan_simpan_global'),
+    path('tanda-tangan/hapus/', views.tanda_tangan_hapus, {'laporan_id': 0}, name='tanda_tangan_hapus_global'),
 
     # Pekerjaan & SPK
     path('laporan/<int:laporan_id>/pekerjaan/simpan/', views.pekerjaan_simpan, name='pekerjaan_simpan'),
@@ -51,6 +53,12 @@ urlpatterns = [
     path('pegawai/tambah/', views.pegawai_tambah, name='pegawai_tambah'),
     path('pegawai/<int:pk>/edit/', views.pegawai_edit, name='pegawai_edit'),
     path('pegawai/<int:pk>/hapus/', views.pegawai_hapus, name='pegawai_hapus'),
+
+    # Master Pejabat Penandatangan (Urutan Kiri ke Kanan)
+    path('pejabat/', views.pejabat_list, name='pejabat_list'),
+    path('pejabat/tambah/', views.pejabat_tambah, name='pejabat_tambah'),
+    path('pejabat/<int:pk>/edit/', views.pejabat_edit, name='pejabat_edit'),
+    path('pejabat/<int:pk>/hapus/', views.pejabat_hapus, name='pejabat_hapus'),
 
     # Seeder Contoh Kedinasan (Pengujian & Impor Awal)
     path('seed-contoh/', views.seed_contoh_data, name='seed_contoh_data'),

@@ -305,51 +305,35 @@
           <a href="{% url 'pegawai_list' %}" class="btn-follow-pill" title="Kelola Pegawai"><i class="bi bi-plus-lg"></i></a>
         </div>
 
-        <!-- Pejabat 1: PPTK -->
-        <div class="mentor-item">
-          <div class="mentor-info">
-            <div class="mentor-avatar" style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #5b4bf6;">
-              YY
+        <!-- Dynamic Pejabat Kedinasan List -->
+        {% if pejabat_dashboard %}
+          {% for pj in pejabat_dashboard %}
+            <div class="mentor-item">
+              <div class="mentor-info">
+                <div class="mentor-avatar" style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #5b4bf6;">
+                  {{ pj.nama|slice:":2"|upper }}
+                </div>
+                <div class="overflow-hidden">
+                  <div class="mentor-name text-truncate" style="max-width: 135px;" title="{{ pj.nama }}">{{ pj.nama }}</div>
+                  <div class="mentor-role text-truncate" style="max-width: 135px;" title="{{ pj.jabatan|default:pj.peran }}">{{ pj.jabatan|default:pj.peran|default:"Pejabat" }}</div>
+                </div>
+              </div>
+              <span class="btn-follow-pill">
+                {% if pj.has_sig %}
+                  <i class="bi bi-check-circle-fill text-success"></i> TTD Ada
+                {% else %}
+                  Urutan {{ pj.urutan }}
+                {% endif %}
+              </span>
             </div>
-            <div>
-              <div class="mentor-name">Yuli Yanti</div>
-              <div class="mentor-role">PPTK &bull; Kasi ASTIK</div>
-            </div>
-          </div>
-          <span class="btn-follow-pill"><i class="bi bi-patch-check-fill text-primary"></i> PPTK</span>
-        </div>
-
-        <!-- Pejabat 2: PPK -->
-        <div class="mentor-item">
-          <div class="mentor-info">
-            <div class="mentor-avatar" style="background: linear-gradient(135deg, #cffafe, #a5f3fc); color: #0891b2;">
-              RS
-            </div>
-            <div>
-              <div class="mentor-name">Rachmat Setiawan</div>
-              <div class="mentor-role">PPK Kominfotik</div>
-            </div>
-          </div>
-          <span class="btn-follow-pill"><i class="bi bi-patch-check-fill text-info"></i> PPK</span>
-        </div>
-
-        <!-- Pejabat 3: Bendahara -->
-        <div class="mentor-item">
-          <div class="mentor-info">
-            <div class="mentor-avatar" style="background: linear-gradient(135deg, #ffe4e6, #fecdd3); color: #e11d48;">
-              RH
-            </div>
-            <div>
-              <div class="mentor-name">Roslaini Harahap</div>
-              <div class="mentor-role">Bendahara Pengeluaran</div>
-            </div>
-          </div>
-          <span class="btn-follow-pill"><i class="bi bi-cash-stack text-danger"></i> Bendahara</span>
-        </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-3 text-muted small">Belum ada pejabat terdaftar.</div>
+        {% endif %}
 
         <!-- See All Button -->
-        <a href="{% url 'pegawai_list' %}" class="btn-see-all-pill">
-          Lihat Master Pegawai
+        <a href="{% url 'pejabat_list' %}" class="btn-see-all-pill">
+          Kelola Master Pejabat
         </a>
       </div>
 

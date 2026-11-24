@@ -18,6 +18,7 @@ import base64
 from .models import (
     LaporanBulanan,
     Pegawai,
+    Pejabat,
     Pekerjaan,
     Pembayaran,
     NomorDokumen,
@@ -182,11 +183,18 @@ def dashboard(request):
     for pb in Pembayaran.objects.all():
         total_honor_all += (pb.total_diterima or pb.honorarium or Decimal(0))
 
+    # Pejabat kedinasan untuk widget statistik
+    pejabat_dashboard = list(Pejabat.objects.filter(is_active=True).order_by('urutan', 'id'))
+    ttd_ada_set = ttd_store.daftar_ada()
+    for pj in pejabat_dashboard:
+        pj.has_sig = pj.file_ttd in ttd_ada_set
+
     context = {
         'laporan_list': laporan_list,
         'laporan_tampil': laporan_tampil,
         'laporan_terbaru': laporan_terbaru,
         'persen_selesai': persen_selesai,
+        'pejabat_dashboard': pejabat_dashboard,
         'filter_q': q, 'filter_tahun': f_tahun, 'filter_status': f_status,
         'daftar_tahun': sorted({i.tahun for i in laporan_list}, reverse=True),
         'chart_json': json.dumps({'labels': chart_labels, 'values': chart_values, 'status': chart_status}),
@@ -415,7 +423,11 @@ def laporan_detail(request, pk):
         p.signature_filename = sig_file if has_sig else None
         pembayaran_with_sig.append(p)
 
-    # Cek tanda tangan pejabat
+    # Cek tanda tangan pejabat kedinasan berurutan
+    pejabat_list_ordered = list(Pejabat.objects.filter(is_active=True).order_by('urutan', 'id'))
+    for pj in pejabat_list_ordered:
+        pj.has_sig = pj.file_ttd in ttd_ada
+
     has_sig_pptk = 'pejabat_pptk.png' in ttd_ada
     has_sig_ppk = 'pejabat_ppk.png' in ttd_ada
     has_sig_bendahara = 'pejabat_bendahara.png' in ttd_ada
@@ -473,6 +485,7 @@ def laporan_detail(request, pk):
         'has_sig_pptk': has_sig_pptk,
         'has_sig_ppk': has_sig_ppk,
         'has_sig_bendahara': has_sig_bendahara,
+        'pejabat_list_ordered': pejabat_list_ordered,
         'checklist': checklist,
         'progress': progress,
         'pegawai_nomor_json': json.dumps(pegawai_nomor),
@@ -983,7 +996,7 @@ def nomor_dokumen_pegawai_simpan(request, laporan_id, pegawai_id):
 # 6. TANDA TANGAN DIGITAL (UPLOAD & DRAW CANVAS)
 # =====================================================
 
-PEJABAT_ROLES = ('pptk', 'ppk', 'bendahara')
+PEJABAT_ROLES = ('pptk', 'ppk', 'bendahara', 'kasudin', 'pengurus_barang')
 MAKS_UKURAN_TTD = 3 * 1024 * 1024  # 3 MB
 
 
@@ -993,11 +1006,24 @@ def _target_tanda_tangan(post):
     if tipe == 'pegawai':
         pid = (post.get('pegawai_id') or '').strip()
         if pid.isdigit() and Pegawai.objects.filter(pk=int(pid)).exists():
-            return f'pegawai_{int(pid)}.png', f'Pegawai {Pegawai.objects.get(pk=int(pid)).nama}'
+            peg = Pegawai.objects.get(pk=int(pid))
+            return f'pegawai_{int(pid)}.png', f'Pegawai {peg.nama}'
     elif tipe == 'pejabat':
+        # 1. Cek lewat ID Pejabat spesifik (dari opsi dropdown dinamis)
+        p_id = (post.get('pejabat_id') or '').strip()
+        if p_id.isdigit():
+            pejabat = Pejabat.objects.filter(pk=int(p_id)).first()
+            if pejabat:
+                return pejabat.file_ttd, f'{pejabat.nama} ({pejabat.jabatan or "Pejabat"})'
+
+        # 2. Cek lewat role slug
         role = (post.get('pejabat_role') or '').strip().lower()
-        if role in PEJABAT_ROLES:
-            return f'pejabat_{role}.png', f'Pejabat {role.upper()}'
+        if role:
+            pejabat = Pejabat.objects.filter(peran__iexact=role).first()
+            if pejabat:
+                return pejabat.file_ttd, f'{pejabat.nama} ({pejabat.jabatan or role.upper()})'
+            elif re.fullmatch(r'[a-zA-Z0-9_-]{2,40}', role):
+                return f'pejabat_{role}.png', f'Pejabat {role.upper()}'
     return None, None
 
 
@@ -1032,7 +1058,7 @@ def _normalisasi_tanda_tangan(raw):
 @login_required(login_url='login')
 def tanda_tangan_gambar(request, nama_berkas):
     """Sajikan gambar tanda tangan dari database (pengganti folder media/)."""
-    if not re.fullmatch(r'(pegawai_\d+|pejabat_(pptk|ppk|bendahara))\.png', nama_berkas):
+    if not re.fullmatch(r'(pegawai_\d+|pejabat_[a-zA-Z0-9_-]+)\.png', nama_berkas):
         raise Http404()
     data = ttd_store.ambil(nama_berkas)
     if data is None:
@@ -1043,19 +1069,25 @@ def tanda_tangan_gambar(request, nama_berkas):
 
 
 @login_required(login_url='login')
-def tanda_tangan_simpan(request, laporan_id):
+def tanda_tangan_simpan(request, laporan_id=0):
     """
     Menyimpan tanda tangan digital (upload file ATAU gambar langsung dari canvas).
-    Gambar divalidasi & dinormalisasi; disimpan ke media/signatures/.
+    Gambar divalidasi & dinormalisasi; disimpan ke tabel TandaTangan di database.
     """
-    laporan = get_object_or_404(LaporanBulanan, pk=laporan_id)
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if laporan_id > 0:
+        laporan = get_object_or_404(LaporanBulanan, pk=laporan_id)
+        default_redirect = redirect('laporan_detail', pk=laporan.pk)
+    else:
+        default_redirect = redirect('pejabat_list')
+
     if request.method != 'POST':
-        return redirect('laporan_detail', pk=laporan.pk)
+        return redirect(next_url) if next_url else default_redirect
 
     filename, label = _target_tanda_tangan(request.POST)
     if not filename:
         messages.error(request, 'Target tanda tangan tidak valid.')
-        return redirect('laporan_detail', pk=laporan.pk)
+        return redirect(next_url) if next_url else default_redirect
 
     canvas_data = request.POST.get('canvas_data') or ''
     uploaded = request.FILES.get('signature_file') or request.FILES.get('file_tanda_tangan')
@@ -1066,40 +1098,50 @@ def tanda_tangan_simpan(request, laporan_id):
             raw = base64.b64decode(canvas_data.split('base64,', 1)[1])
         except Exception:
             messages.error(request, 'Data goresan tanda tangan tidak valid.')
-            return redirect('laporan_detail', pk=laporan.pk)
+            return redirect(next_url) if next_url else default_redirect
     elif uploaded:
         if uploaded.size > MAKS_UKURAN_TTD:
             messages.error(request, 'Ukuran berkas terlalu besar (maksimal 3 MB).')
-            return redirect('laporan_detail', pk=laporan.pk)
+            return redirect(next_url) if next_url else default_redirect
         raw = uploaded.read()
     else:
         messages.warning(request, 'Tidak ada tanda tangan yang digambar atau berkas yang dipilih.')
-        return redirect('laporan_detail', pk=laporan.pk)
+        return redirect(next_url) if next_url else default_redirect
 
     if len(raw) > MAKS_UKURAN_TTD:
         messages.error(request, 'Ukuran gambar terlalu besar (maksimal 3 MB).')
-        return redirect('laporan_detail', pk=laporan.pk)
+        return redirect(next_url) if next_url else default_redirect
     try:
         png = _normalisasi_tanda_tangan(raw)
     except Exception:
         messages.error(request, 'Berkas bukan gambar yang valid. Gunakan PNG atau JPG.')
-        return redirect('laporan_detail', pk=laporan.pk)
+        return redirect(next_url) if next_url else default_redirect
 
     ttd_store.simpan(filename, png)
     messages.success(request, f'Tanda tangan digital untuk {label} berhasil disimpan.')
-    return redirect('laporan_detail', pk=laporan.pk)
+    return redirect(next_url) if next_url else default_redirect
 
 
 @login_required(login_url='login')
-def tanda_tangan_hapus(request, laporan_id):
+def tanda_tangan_hapus(request, laporan_id=0):
     """Menghapus tanda tangan digital (dokumen kembali memakai ruang tanda tangan kosong)."""
-    laporan = get_object_or_404(LaporanBulanan, pk=laporan_id)
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if laporan_id > 0:
+        laporan = get_object_or_404(LaporanBulanan, pk=laporan_id)
+        default_redirect = redirect('laporan_detail', pk=laporan.pk)
+    else:
+        default_redirect = redirect('pejabat_list')
+
     if request.method == 'POST':
-        filename, _label = _target_tanda_tangan(request.POST)
+        filename, label = _target_tanda_tangan(request.POST)
         if filename:
             if ttd_store.hapus(filename):
-                messages.info(request, 'Tanda tangan digital dihapus. Dokumen memakai ruang tanda tangan kosong.')
-    return redirect('laporan_detail', pk=laporan.pk)
+                messages.info(request, f'Tanda tangan digital {label or ""} berhasil dihapus.')
+            else:
+                messages.warning(request, 'Tanda tangan belum pernah disimpan.')
+        else:
+            messages.error(request, 'Target tanda tangan tidak ditemukan.')
+    return redirect(next_url) if next_url else default_redirect
 
 
 # =====================================================
@@ -1484,3 +1526,111 @@ def pegawai_hapus(request, pk):
         return redirect('pegawai_list')
 
     return render(request, 'pegawai/konfirmasi_hapus.html', {'pegawai': pegawai})
+
+
+# =====================================================
+# 10. MASTER PEJABAT PENANDATANGAN (URUTAN KIRI KE KANAN)
+# =====================================================
+
+@login_required(login_url='login')
+def pejabat_list(request):
+    """
+    Daftar Master Pejabat Penandatangan Dokumen Kedinasan.
+    Tersusun berurutan dari kiri ke kanan (Kolom 1, Kolom 2, Kolom 3, dst.)
+    """
+    pejabat_items = list(Pejabat.objects.all().order_by('urutan', 'id'))
+    ttd_ada = ttd_store.daftar_ada()
+    for p in pejabat_items:
+        p.has_sig = p.file_ttd in ttd_ada
+        p.nama_file_ttd = p.file_ttd
+
+    context = {
+        'pejabat_list': pejabat_items,
+        'total_pejabat': len(pejabat_items),
+        'posisi_pilihan': Pejabat.POSISI_PILIHAN,
+    }
+    return render(request, 'pejabat/list.html', context)
+
+
+@login_required(login_url='login')
+def pejabat_tambah(request):
+    """Tambah pejabat penandatangan baru ke database."""
+    if request.method == 'POST':
+        nama = request.POST.get('nama', '').strip()
+        nip = request.POST.get('nip', '').strip()
+        jabatan = request.POST.get('jabatan', '').strip()
+        peran = request.POST.get('peran', '').strip().lower()
+        urutan = request.POST.get('urutan', '1').strip()
+        posisi_kolom = request.POST.get('posisi_kolom', 'kiri').strip()
+
+        if not nama:
+            messages.error(request, 'Nama pejabat wajib diisi.')
+            return redirect('pejabat_list')
+
+        try:
+            urutan_int = int(urutan)
+        except ValueError:
+            urutan_int = 1
+
+        Pejabat.objects.create(
+            nama=nama,
+            nip=nip or None,
+            jabatan=jabatan or None,
+            peran=peran or None,
+            urutan=urutan_int,
+            posisi_kolom=posisi_kolom,
+            is_active=True
+        )
+        messages.success(request, f'Pejabat {nama} berhasil ditambahkan dengan urutan tanda tangan {urutan_int}.')
+        return redirect('pejabat_list')
+
+    return redirect('pejabat_list')
+
+
+@login_required(login_url='login')
+def pejabat_edit(request, pk):
+    """Edit data dan urutan pejabat penandatangan."""
+    pejabat = get_object_or_404(Pejabat, pk=pk)
+    if request.method == 'POST':
+        nama = request.POST.get('nama', '').strip()
+        nip = request.POST.get('nip', '').strip()
+        jabatan = request.POST.get('jabatan', '').strip()
+        peran = request.POST.get('peran', '').strip().lower()
+        urutan = request.POST.get('urutan', '1').strip()
+        posisi_kolom = request.POST.get('posisi_kolom', 'kiri').strip()
+
+        if not nama:
+            messages.error(request, 'Nama pejabat wajib diisi.')
+            return redirect('pejabat_list')
+
+        try:
+            urutan_int = int(urutan)
+        except ValueError:
+            urutan_int = 1
+
+        pejabat.nama = nama
+        pejabat.nip = nip or None
+        pejabat.jabatan = jabatan or None
+        pejabat.peran = peran or None
+        pejabat.urutan = urutan_int
+        pejabat.posisi_kolom = posisi_kolom
+        pejabat.save()
+
+        messages.success(request, f'Data pejabat {nama} berhasil diperbarui.')
+        return redirect('pejabat_list')
+
+    return redirect('pejabat_list')
+
+
+@login_required(login_url='login')
+def pejabat_hapus(request, pk):
+    """Hapus pejabat penandatangan dari sistem."""
+    pejabat = get_object_or_404(Pejabat, pk=pk)
+    if request.method == 'POST':
+        nama = pejabat.nama
+        pejabat.delete()
+        messages.success(request, f'Pejabat {nama} berhasil dihapus.')
+        return redirect('pejabat_list')
+
+    return redirect('pejabat_list')
+

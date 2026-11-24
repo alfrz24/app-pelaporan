@@ -63,6 +63,10 @@
           <i class="bi bi-people-fill"></i>
           <span>Master Pegawai</span>
         </a>
+        <a href="{% url 'pejabat_list' %}" class="sidebar-nav-link {% if 'pejabat' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="bi bi-patch-check-fill"></i>
+          <span>Master Pejabat</span>
+        </a>
 
         <!-- PEJABAT SECTION (Matches "FRIENDS" in Reference) -->
         <div class="menu-heading mt-2">Pejabat & Tim</div>
