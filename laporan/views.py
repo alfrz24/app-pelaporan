@@ -174,6 +174,8 @@ def dashboard(request):
     chart_values = [int(per_periode[k]) for k in keys]
     n_selesai = sum(1 for i in laporan_list if i.status == 'selesai')
     chart_status = [n_selesai, total_laporan - n_selesai]
+    persen_selesai = int((n_selesai / total_laporan * 100)) if total_laporan > 0 else 100
+    laporan_terbaru = laporan_list[:3]
 
     # Hitung total honor keseluruhan dari seluruh pembayaran
     total_honor_all = Decimal(0)
@@ -183,6 +185,8 @@ def dashboard(request):
     context = {
         'laporan_list': laporan_list,
         'laporan_tampil': laporan_tampil,
+        'laporan_terbaru': laporan_terbaru,
+        'persen_selesai': persen_selesai,
         'filter_q': q, 'filter_tahun': f_tahun, 'filter_status': f_status,
         'daftar_tahun': sorted({i.tahun for i in laporan_list}, reverse=True),
         'chart_json': json.dumps({'labels': chart_labels, 'values': chart_values, 'status': chart_status}),

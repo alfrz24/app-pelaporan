@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Sistem Pelaporan Bulanan &bull; Sudin Kominfotik Jakarta Pusat{% endblock %}</title>
+  <title>{% block title %}SIM-Pelaporan &bull; Sudin Kominfotik Jakarta Pusat{% endblock %}</title>
 
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,57 +35,73 @@
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
   <div id="wrapper">
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (Coursue Layout) -->
     <aside id="sidebar">
+      <!-- Brand Logo -->
       <a href="{% url 'dashboard' %}" class="sidebar-brand">
         <span class="brand-icon">
-          <i class="bi bi-file-earmark-bar-graph-fill"></i>
+          <i class="bi bi-stars"></i>
         </span>
         <div class="d-flex flex-column">
-          <span class="brand-text">SIM-Pelaporan</span>
-          <small class="text-secondary" style="font-size: 0.65rem; letter-spacing: 0.05em;">KOMINFOTIK JAKPUS</small>
+          <span class="brand-text">Pelaporan</span>
+          <small class="text-muted" style="font-size: 0.62rem; letter-spacing: 0.08em; font-weight: 700;">KOMINFOTIK JP</small>
         </div>
       </a>
 
-      <div class="sidebar-menu">
-        <div class="menu-heading">Menu Utama</div>
+      <div class="sidebar-menu pb-4">
+        <!-- OVERVIEW SECTION -->
+        <div class="menu-heading">Overview</div>
         <a href="{% url 'dashboard' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-          <i class="bi bi-grid-1x2-fill"></i>
+          <i class="bi bi-grid-fill"></i>
           <span>Dashboard</span>
         </a>
         <a href="{% url 'dashboard' %}#laporan-section" class="sidebar-nav-link">
           <i class="bi bi-folder2-open"></i>
           <span>Daftar Laporan</span>
         </a>
-
-        <div class="menu-heading">Manajemen Data</div>
         <a href="{% url 'pegawai_list' %}" class="sidebar-nav-link {% if 'pegawai' in request.resolver_match.url_name %}active{% endif %}">
           <i class="bi bi-people-fill"></i>
           <span>Master Pegawai</span>
         </a>
 
-        <div class="menu-heading">Akun & Sistem</div>
+        <!-- PEJABAT SECTION (Matches "FRIENDS" in Reference) -->
+        <div class="menu-heading mt-2">Pejabat & Tim</div>
+        <div class="sidebar-pejabat-item">
+          <div class="sidebar-pejabat-avatar" style="background: linear-gradient(135deg, #6366f1, #818cf8);">YY</div>
+          <div class="overflow-hidden">
+            <div class="sidebar-pejabat-name text-truncate">Yuli Yanti</div>
+            <div class="sidebar-pejabat-role text-truncate">PPTK &bull; Seksi ASTIK</div>
+          </div>
+        </div>
+        <div class="sidebar-pejabat-item">
+          <div class="sidebar-pejabat-avatar" style="background: linear-gradient(135deg, #06b6d4, #38bdf8);">RS</div>
+          <div class="overflow-hidden">
+            <div class="sidebar-pejabat-name text-truncate">Rachmat Setiawan</div>
+            <div class="sidebar-pejabat-role text-truncate">PPK Kominfotik</div>
+          </div>
+        </div>
+        <div class="sidebar-pejabat-item">
+          <div class="sidebar-pejabat-avatar" style="background: linear-gradient(135deg, #f43f5e, #fb7185);">RH</div>
+          <div class="overflow-hidden">
+            <div class="sidebar-pejabat-name text-truncate">Roslaini Harahap</div>
+            <div class="sidebar-pejabat-role text-truncate">Bendahara</div>
+          </div>
+        </div>
+
+        <!-- SETTINGS SECTION -->
+        <div class="menu-heading mt-2">Pengaturan</div>
         <a href="{% url 'profil' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'profil' %}active{% endif %}">
-          <i class="bi bi-person-gear"></i>
-          <span>Profil & Password</span>
+          <i class="bi bi-gear-fill"></i>
+          <span>Profil & Akun</span>
+        </a>
+        <a href="{% url 'backup_data' %}" class="sidebar-nav-link" title="Unduh Arsip JSON">
+          <i class="bi bi-cloud-arrow-down-fill"></i>
+          <span>Cadangan Data</span>
         </a>
         <a href="{% url 'logout' %}" class="sidebar-nav-link text-danger">
           <i class="bi bi-box-arrow-right"></i>
           <span>Keluar (Logout)</span>
         </a>
-      </div>
-
-      <!-- User Info di bagian bawah sidebar -->
-      <div class="sidebar-footer">
-        <div class="sidebar-user-card">
-          <div class="sidebar-user-avatar">
-            {{ request.user.username|slice:":2"|upper|default:"AD" }}
-          </div>
-          <div class="sidebar-user-info overflow-hidden">
-            <div class="fw-bold text-truncate text-white small">{{ request.user.first_name|default:request.user.username|title }}</div>
-            <div class="text-secondary text-truncate" style="font-size: 0.72rem;">Operator Sudin Kominfotik</div>
-          </div>
-        </div>
       </div>
     </aside>
 
@@ -93,12 +109,13 @@
     <div id="main-content">
       <!-- TOPBAR NAVBAR -->
       <header class="topbar">
-        <div class="d-flex align-items-center gap-3">
-          <button class="btn btn-icon" id="sidebarToggle" title="Toggle Sidebar">
+        <div class="d-flex align-items-center gap-3 flex-grow-1">
+          <button class="topbar-btn d-lg-none" id="sidebarToggle" title="Toggle Menu">
             <i class="bi bi-list fs-5"></i>
           </button>
           
-          <div class="topbar-search d-none d-md-block">
+          <!-- Pill Search Bar -->
+          <div class="topbar-search">
             <i class="bi bi-search topbar-search-icon"></i>
             <input type="text" class="form-control" id="tableSearchInput" placeholder="Cari laporan, pegawai, nomor SPK...">
           </div>
@@ -106,37 +123,37 @@
 
         <div class="d-flex align-items-center gap-2">
           <!-- Tombol mode terang/gelap -->
-          <button type="button" class="btn-theme" id="themeToggle" title="Ganti mode terang/gelap" aria-label="Ganti tema">
+          <button type="button" class="topbar-btn" id="themeToggle" title="Ganti mode terang/gelap" aria-label="Ganti tema">
             <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
           </button>
-          <!-- Database Status Pill -->
-          <div class="badge bg-light text-dark border d-none d-lg-flex align-items-center gap-1 py-1 px-2" title="Status Penyimpanan Database">
+
+          <!-- Status Database Pill -->
+          <div class="badge bg-white text-dark border d-none d-md-flex align-items-center gap-2 py-2 px-3 shadow-sm" style="border-radius: var(--radius-pill);">
             <span class="p-1 rounded-circle bg-success d-inline-block"></span>
-            <small class="fw-semibold">Database Tersambung</small>
+            <small class="fw-bold" style="font-size: 0.76rem;">Postgres Connected</small>
           </div>
 
-          <!-- User Profile Dropdown -->
+          <!-- User Profile Dropdown Pill (Jason Ranti Chip) -->
           <div class="dropdown">
-            <button class="btn p-0 border-0 d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false">
-              <div class="sidebar-user-avatar" style="width: 36px; height: 36px; background: #2563eb; font-size: 0.85rem;">
+            <div class="topbar-user-chip" data-bs-toggle="dropdown" aria-expanded="false">
+              <div class="author-avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #5b4bf6, #7c3aed); font-size: 0.8rem;">
                 {{ request.user.username|slice:":2"|upper|default:"AD" }}
               </div>
-              <span class="d-none d-md-inline small fw-semibold text-dark">{{ request.user.username|title }}</span>
-              <i class="bi bi-chevron-down small text-muted"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 200px;">
-              <li>
-                <div class="dropdown-item-text">
-                  <span class="fw-bold d-block">{{ request.user.username|title }}</span>
-                  <small class="text-muted">Operator Pelaporan</small>
-                </div>
+              <span class="d-none d-sm-inline small fw-bold text-dark pe-1">{{ request.user.username|title }}</span>
+              <i class="bi bi-chevron-down text-muted" style="font-size: 0.7rem;"></i>
+            </div>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="min-width: 220px; border-radius: 16px;">
+              <li class="px-3 py-2">
+                <span class="fw-bold d-block text-dark">{{ request.user.first_name|default:request.user.username|title }}</span>
+                <small class="text-muted">Operator Sudin Kominfotik</small>
               </li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="{% url 'dashboard' %}"><i class="bi bi-grid-1x2 me-2"></i> Dashboard</a></li>
-              <li><a class="dropdown-item" href="{% url 'pegawai_list' %}"><i class="bi bi-people me-2"></i> Master Pegawai</a></li>
-              <li><a class="dropdown-item" href="{% url 'profil' %}"><i class="bi bi-person-gear me-2"></i> Profil & Ganti Password</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger fw-semibold" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i> Keluar (Logout)</a></li>
+              <li><hr class="dropdown-divider my-1"></li>
+              <li><a class="dropdown-item py-2" href="{% url 'dashboard' %}"><i class="bi bi-grid me-2 text-primary"></i> Dashboard</a></li>
+              <li><a class="dropdown-item py-2" href="{% url 'pegawai_list' %}"><i class="bi bi-people me-2 text-primary"></i> Master Pegawai</a></li>
+              <li><a class="dropdown-item py-2" href="{% url 'profil' %}"><i class="bi bi-person-gear me-2 text-primary"></i> Profil & Password</a></li>
+              <li><a class="dropdown-item py-2" href="{% url 'backup_data' %}"><i class="bi bi-download me-2 text-primary"></i> Unduh Cadangan Data</a></li>
+              <li><hr class="dropdown-divider my-1"></li>
+              <li><a class="dropdown-item py-2 text-danger fw-semibold" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i> Keluar (Logout)</a></li>
             </ul>
           </div>
         </div>
@@ -148,9 +165,9 @@
       </main>
 
       <!-- FOOTER -->
-      <footer class="main-footer">
-        <div>&copy; 2026 <strong>Suku Dinas Komunikasi, Informatika, dan Statistik Kota Administrasi Jakarta Pusat</strong>.</div>
-        <div class="text-muted small">SIM-Pelaporan Bulanan &bull; Versi 2.0</div>
+      <footer class="main-footer mt-4 pt-3 pb-3 border-top d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="small text-muted">&copy; 2026 <strong>Suku Dinas Komunikasi, Informatika, dan Statistik Kota Administrasi Jakarta Pusat</strong>.</div>
+        <div class="small text-muted">SIM-Pelaporan Bulanan &bull; Versi 2.1 Modern</div>
       </footer>
     </div>
   </div>
@@ -168,9 +185,10 @@
       var btn = document.getElementById('themeToggle'), icon = document.getElementById('themeIcon');
       function paint() {
         var dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-        if (icon) icon.className = dark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        if (icon) icon.className = dark ? 'bi bi-sun-fill text-warning' : 'bi bi-moon-stars-fill';
         if (window.Chart) {
-          Chart.defaults.color = dark ? '#94a3b8' : '#64748b'; Chart.defaults.borderColor = dark ? '#223050' : '#e2e8f0';
+          Chart.defaults.color = dark ? '#94a3b8' : '#64748b';
+          Chart.defaults.borderColor = dark ? '#223050' : '#edf0f7';
           Object.values(Chart.instances || {}).forEach(function (c) { c.update(); });
         }
       }
